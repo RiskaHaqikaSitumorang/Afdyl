@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723399576105",
+    "project_id": "afdyl-93319",
+    "storage_bucket": "afdyl-93319.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723399576105:android:f453fed535985e7b51aa38",
+        "android_client_info": {
+          "package_name": "com.example.afdyl"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMm0SWTnaxfy9ZC-CP147YNyEklNnL6Kk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
