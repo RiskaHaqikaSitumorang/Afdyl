@@ -1,6 +1,10 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../routes/app_routes.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -8,21 +12,25 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  String currentTime = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
-  String prayerTime = "Sekarang waktu Zuhur";
+  String currentTime = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
+  String prayerTime = "Memuat jadwal sholat...";
   String lastRead = "Q.S Al-Fatihah";
-  String location = "Lampineng, Banda Aceh";
+  String location = "Mendapatkan lokasi...";
+  late Timer _timer;
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
     super.initState();
     _startTimeUpdate();
+    _getCurrentLocation(); // Ambil lokasi saat inisialisasi
   }
 
   void _startTimeUpdate() {
     _updateTime(); // Update awal
-    const Duration updateInterval = Duration(minutes: 1);
-    Timer.periodic(updateInterval, (timer) {
+    const Duration updateInterval = Duration(seconds: 1);
+    _timer = Timer.periodic(updateInterval, (timer) {
       if (mounted) {
         setState(() {
           _updateTime();
@@ -33,14 +41,110 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _updateTime() {
     final now = DateTime.now();
-    setState(() {
-      currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-    });
+    currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _getCurrentLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            location = "Izin lokasi ditolak";
+          });
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
+        });
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: Duration(seconds: 10),
+      );
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      });
+      await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
+      await _fetchPrayerTimes(position.latitude, position.longitude);
+    } catch (e) {
+      setState(() {
+        location = "Gagal mendapatkan lokasi: $e";
+      });
+    }
+  }
+
+  Future<void> _getPlaceNameFromCoordinates(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      if (placemarks.isNotEmpty) {
+        Placemark placemark = placemarks.first;
+        String locality = placemark.locality ?? "Unknown";
+        String administrativeArea = placemark.administrativeArea ?? "Unknown";
+        setState(() {
+          location = "$locality, $administrativeArea";
+        });
+      } else {
+        setState(() {
+          location = "Lokasi tidak ditemukan";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        location = "Gagal mengambil nama lokasi: $e";
+      });
+    }
+  }
+
+  Future<void> _fetchPrayerTimes(double latitude, double longitude) async {
+    try {
+      final response = await http.get(Uri.parse(
+          'http://api.aladhan.com/v1/timingsByLatLng?latitude=$latitude&longitude=$longitude&method=2'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final timings = data['data']['timings'];
+        final now = DateTime.now();
+        final currentHour = now.hour;
+        String nextPrayer = "Tidak ada data";
+
+        if (currentHour < int.parse(timings['Fajr'].split(':')[0])) {
+          nextPrayer = "Fajr: ${timings['Fajr']}";
+        } else if (currentHour < int.parse(timings['Dhuhr'].split(':')[0])) {
+          nextPrayer = "Dhuhr: ${timings['Dhuhr']}";
+        } else if (currentHour < int.parse(timings['Asr'].split(':')[0])) {
+          nextPrayer = "Asr: ${timings['Asr']}";
+        } else if (currentHour < int.parse(timings['Maghrib'].split(':')[0])) {
+          nextPrayer = "Maghrib: ${timings['Maghrib']}";
+        } else if (currentHour < int.parse(timings['Isha'].split(':')[0])) {
+          nextPrayer = "Isha: ${timings['Isha']}";
+        } else {
+          nextPrayer = "Fajr: ${timings['Fajr']} (besok)";
+        }
+
+        setState(() {
+          prayerTime = "Sekarang waktu $nextPrayer";
+        });
+      } else {
+        setState(() {
+          prayerTime = "Gagal memuat jadwal sholat";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        prayerTime = "Error: $e";
+      });
+    }
   }
 
   @override
   void dispose() {
-    // Hentikan timer saat widget di-dispose
+    _timer.cancel();
     super.dispose();
   }
 
@@ -250,7 +354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Al-Quran',
                         color: const Color(0xFFE74C3C),
                         onTap: () {
-                          // TODO: Navigate to Al-Quran page
+                          Navigator.pushNamed(context, AppRoutes.quran);
                         },
                       ),
                     ),
@@ -261,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Qibla',
                         color: Colors.black,
                         onTap: () {
-                          // TODO: Navigate to Qibla page
+                          Navigator.pushNamed(context, AppRoutes.qibla);
                         },
                       ),
                     ),
@@ -272,7 +376,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Tracing hijayah',
                         color: Colors.black,
                         onTap: () {
-                          // TODO: Navigate to Tracing page
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Fitur Tracing hijayah sedang dikembangkan')),
+                          );
                         },
                       ),
                     ),
@@ -283,7 +389,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Latihan',
                         color: const Color(0xFF52C41A),
                         onTap: () {
-                          // TODO: Navigate to Training page
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Fitur Latihan sedang dikembangkan')),
+                          );
                         },
                       ),
                     ),
@@ -314,7 +422,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildVideoCard(
                             title: 'Huruf Alif',
                             onTap: () {
-                              // TODO: Play video for Alif
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Memutar video Huruf Alif')),
+                              );
                             },
                           ),
                         ),
@@ -323,7 +433,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildVideoCard(
                             title: 'Huruf Ba',
                             onTap: () {
-                              // TODO: Play video for Ba
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Memutar video Huruf Ba')),
+                              );
                             },
                           ),
                         ),
@@ -336,7 +448,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildVideoCard(
                             title: 'Huruf Ta',
                             onTap: () {
-                              // TODO: Play video for Ta
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Memutar video Huruf Ta')),
+                              );
                             },
                           ),
                         ),
@@ -345,7 +459,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildVideoCard(
                             title: 'Huruf Tsa',
                             onTap: () {
-                              // TODO: Play video for Tsa
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Memutar video Huruf Tsa')),
+                              );
                             },
                           ),
                         ),
