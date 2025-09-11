@@ -198,23 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 24,
                             ),
                           ),
-<<<<<<< HEAD
                         ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, AppRoutes.wrapped);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.bar_chart,
-                              color: Colors.white,
-                              size: 24,
-=======
                           GestureDetector(
                             onTap: () {
                               Navigator.pushNamed(context, AppRoutes.wrapped);
@@ -230,7 +214,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: Colors.white,
                                 size: 24,
                               ),
->>>>>>> 184dea7722f6850644f6058b94078a9695846da2
+
                             ),
                           ),
                         ],
