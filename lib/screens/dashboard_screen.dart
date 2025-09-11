@@ -5,8 +5,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../routes/app_routes.dart';
-import '../screens/wrapped_screen.dart';
-import '../screens/profile_page.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override

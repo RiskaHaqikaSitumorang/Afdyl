@@ -1,4 +1,3 @@
-import 'dart:ui'; // Untuk ImageFilter jika perlu blur, tapi opsional
 import 'package:flutter/material.dart';
 
 class QuranWrappedScreen extends StatefulWidget {
@@ -16,7 +15,7 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen>
     {'rank': '#1', 'name': 'Al-Ikhlas'},
     {'rank': '#2', 'name': 'An-Nas'},
     {'rank': '#3', 'name': 'Al-Falaq'},
-    {'rank': '#4', 'name': 'Al-Mauun'},
+    {'rank': '#4', 'name': 'Al-Maun'},
     {'rank': '#5', 'name': 'Al-Fatihah'},
   ];
 
@@ -44,12 +43,6 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.forward();
-    });
-
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        // Opsional: Tambah konfetti atau efek lain
-      }
     });
   }
 
@@ -80,97 +73,108 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen>
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              const SizedBox(height: 40),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  'Top Surah Kamu!',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                    letterSpacing: 1.5,
-                    height: 1.2,
-                  ),
-                  textAlign: TextAlign.center,
+              // Tombol back
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                 ),
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Stack(
-                  children: [
-                    ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40.0, // Padding horizontal lebih besar untuk jarak dari tepi
-                        vertical: 20.0,  // Padding vertikal untuk posisi tengah
-                      ),
-                      itemCount: topSurahs.length,
-                      itemBuilder: (context, index) {
-                        final surah = topSurahs[index];
-                        return AnimatedBuilder(
-                          animation: _slideAnimations[index],
-                          builder: (context, child) {
-                            return Transform.translate(
-                              offset: Offset(_slideAnimations[index].value, 0),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.start, // Mulai dari kiri, geser ke kanan
-                                  crossAxisAlignment: CrossAxisAlignment.center, // Tengah vertikal di dalam Row
-                                  children: [
-                                    const SizedBox(width: 60), // Offset ke kanan lebih besar (sesuai gambar)
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Center(
+              Column(
+                children: [
+                  const SizedBox(height: 95), // Turunin title sedikit
+                  const Text(
+                    'Top Surah\nKamu!',
+                    style: TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                      height: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 30),
+                  Expanded(
+                    child: Center(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: topSurahs.length,
+                        itemBuilder: (context, index) {
+                          final surah = topSurahs[index];
+                          return AnimatedBuilder(
+                            animation: _slideAnimations[index],
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(_slideAnimations[index].value, 0),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 14.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Rank sejajar pakai width tetap
+                                      SizedBox(
+                                        width: 50,
                                         child: Text(
                                           surah['rank']!,
+                                          textAlign: TextAlign.right,
                                           style: const TextStyle(
-                                            fontSize: 18,
+                                            fontSize: 26,
                                             fontWeight: FontWeight.bold,
                                             fontFamily: 'OpenDyslexic',
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 20), // Jarak lebih besar antara rank dan nama
-                                    Text(
-                                      surah['name']!,
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        color: Colors.black,
-                                        fontFamily: 'OpenDyslexic',
+                                      const SizedBox(width: 14),
+                                      // Kotak putih
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 20),
+                                      // Nama surah
+                                      Text(
+                                        surah['name']!,
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          color: Colors.black,
+                                          fontFamily: 'OpenDyslexic',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'DysQuran',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    color: Color(0xFF388E3C),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'OpenDyslexic',
                   ),
-                ),
+                  const SizedBox(height: 25),
+                  const Text(
+                    'Quran Wrapped',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF388E3C),
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ],
           ),

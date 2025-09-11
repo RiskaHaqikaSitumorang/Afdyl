@@ -263,7 +263,7 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
           if (!_qiblaService.hasSensorSupport) ...[
             SizedBox(height: 10),
           ],
-          Container(
+          SizedBox(
             width: 320, // Diameter diperbesar dari 280 ke 320
             height: 320, // Sesuaikan tinggi dengan lebar untuk lingkaran sempurna
             child: Stack(
@@ -289,7 +289,7 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
                       final angle = _qiblaService.getQiblaAngle() * (math.pi / 180);
                       return Transform.rotate(
                         angle: angle,
-                        child: Container(
+                        child: SizedBox(
                           width: 240, // Sesuaikan ukuran panah agar proporsional
                           height: 240, // Sesuaikan tinggi dengan lebar
                           child: CustomPaint(
