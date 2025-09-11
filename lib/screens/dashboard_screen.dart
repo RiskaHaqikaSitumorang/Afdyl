@@ -198,6 +198,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 24,
                             ),
                           ),
+<<<<<<< HEAD
                         ),
                         GestureDetector(
                           onTap: () {
@@ -213,9 +214,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Icons.bar_chart,
                               color: Colors.white,
                               size: 24,
+=======
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, AppRoutes.wrapped);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.bar_chart,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+>>>>>>> 184dea7722f6850644f6058b94078a9695846da2
                             ),
                           ),
-                        )
                         ],
                       ),
                       const SizedBox(height: 40),
@@ -385,12 +402,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: _buildActivityCard(
                         icon: Icons.text_fields,
-                        title: 'Tracing hijayah',
+                        title: 'Tracing Hijaiyah', // Perbaiki typo dan ubah ke navigasi
                         color: Colors.black,
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Fitur Tracing hijayah sedang dikembangkan')),
-                          );
+                          Navigator.pushNamed(context, AppRoutes.hijaiyahTracing);
                         },
                       ),
                     ),

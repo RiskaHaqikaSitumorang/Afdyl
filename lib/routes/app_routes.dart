@@ -9,7 +9,11 @@ import '../screens/quran_page.dart';
 import '../screens/qibla_page.dart';
 import '../screens/reading_page.dart';
 import '../screens/wrapped_screen.dart';
+<<<<<<< HEAD
 import '../screens/profile_page.dart';
+=======
+import '../screens/hijaiyah_tracing_page.dart';
+>>>>>>> 184dea7722f6850644f6058b94078a9695846da2
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -21,8 +25,12 @@ class AppRoutes {
   static const String reading = '/reading';
   static const String qibla = '/qibla';
   static const String wrapped = '/wrapped';
+<<<<<<< HEAD
   static const String profile = '/profile';
 
+=======
+  static const String hijaiyahTracing = '/hijaiyah-tracing'; // Pastikan didefinisikan
+>>>>>>> 184dea7722f6850644f6058b94078a9695846da2
 
   static final routes = {
     splash: (context) => SplashScreen(),
@@ -33,7 +41,11 @@ class AppRoutes {
     quran: (context) => QuranPage(),
     qibla: (context) => QiblaPage(),
     wrapped: (context) => QuranWrappedScreen(),
+<<<<<<< HEAD
     profile: (context) => ProfilePage(),
+=======
+    hijaiyahTracing: (context) => HijaiyahTracingPage(),
+>>>>>>> 184dea7722f6850644f6058b94078a9695846da2
     reading: (context) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ReadingPage(
