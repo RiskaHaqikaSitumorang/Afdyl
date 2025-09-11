@@ -4,7 +4,7 @@ class ModeToggle extends StatelessWidget {
   final bool isPracticeMode;
   final VoidCallback onToggle;
 
-  ModeToggle({
+  const ModeToggle({
     required this.isPracticeMode,
     required this.onToggle,
   });

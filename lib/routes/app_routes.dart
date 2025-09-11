@@ -1,4 +1,5 @@
 // lib/routes/app_routes.dart
+import 'package:afdyl/screens/hijaiyah_tracing_detail_page.dart';
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -22,15 +23,9 @@ class AppRoutes {
   static const String reading = '/reading';
   static const String qibla = '/qibla';
   static const String wrapped = '/wrapped';
-<<<<<<< HEAD
-  static const String hijaiyahTracing = '/hijaiyah-tracing';
-  static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
-=======
   static const String profile = '/profile';
-
-
+  static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
   static const String hijaiyahTracing = '/hijaiyah-tracing'; // Pastikan didefinisikan
->>>>>>> origin/main
 
   static final routes = {
     splash: (context) => SplashScreen(),

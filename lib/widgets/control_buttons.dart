@@ -7,7 +7,7 @@ class ControlButtons extends StatelessWidget {
   final bool isCorrect;
   final bool isProcessing;
 
-  ControlButtons({
+  const ControlButtons({
     required this.onPlaySound,
     required this.onCheckTracing,
     required this.showFeedback,

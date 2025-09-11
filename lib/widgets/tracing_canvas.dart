@@ -9,7 +9,7 @@ class TracingCanvas extends StatelessWidget {
   final Function(DragUpdateDetails) onPanUpdate;
   final Function(DragEndDetails) onPanEnd;
 
-  TracingCanvas({
+  const TracingCanvas({
     required this.letter,
     required this.isPracticeMode,
     required this.tracingPoints,

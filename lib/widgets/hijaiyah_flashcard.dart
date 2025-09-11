@@ -105,14 +105,15 @@ class HijaiyahFlashcard extends StatelessWidget {
       ['(dha)', '(dhi)', '(dhu)'],     // 14: Dhad
       ['(tha)', '(thi)', '(thu)'],     // 15: Tha
       ['(zha)', '(zhi)', '(zhu)'],     // 16: Zha
-      ['(\')', '(\')', '(\')'],        // 17: Ain (sementara, bisa disesuaikan)
+      ['(\'a)', '(\'i)', '(\'u)'],        // 17: Ain (sementara, bisa disesuaikan)
       ['(gha)', '(ghi)', '(ghu)'],     // 18: Ghain
       ['(fa)', '(fi)', '(fu)'],        // 19: Fa
       ['(qa)', '(qi)', '(qu)'],        // 20: Qaf
       ['(ka)', '(ki)', '(ku)'],        // 21: Kaf
-      ['(ma)', '(mi)', '(mu)'],        // 22: Lam
-      ['(na)', '(ni)', '(nu)'],        // 23: Mim
-      ['(wawi)', '(wi)', '(wu)'],      // 24: Waw
+      ['(la)', '(li)', '(lu)'],        // 22: Lam
+      ['(ma)', '(mi)', '(mu)'],        // 23: Mim
+      ['(na)', '(ni)', '(nu)'],       // 24 : Nun
+      ['(wa)', '(wi)', '(wu)'],      // 24: Waw
       ['(ha)', '(hi)', '(hu)'],        // 25: Ha (ه)
       ['(ya)', '(yi)', '(yu)'],        // 26: Ya
     ];
