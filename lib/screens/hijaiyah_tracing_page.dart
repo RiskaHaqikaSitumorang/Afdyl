@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/hijaiyah_model.dart';
 import '../widgets/hijaiyah_flashcard.dart';
-import '../widgets/hijaiyah_dialog.dart';
+import 'hijaiyah_tracing_detail_page.dart';
 
 class HijaiyahTracingPage extends StatefulWidget {
   @override
@@ -125,12 +125,12 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
                     childAspectRatio: 0.85,
                   ),
                   itemCount: isHurufMode
-                      ? hijaiyahLetters.length  // 28 huruf
-                      : 30,  // 10 baris x 3 variasi = 30 item
+                      ? hijaiyahLetters.length // 28 huruf
+                      : 30, // 10 baris x 3 variasi = 30 item
                   itemBuilder: (context, index) => HijaiyahFlashcard(
                     index: index,
                     isHurufMode: isHurufMode,
-                    onTap: () => _showTracingDialog(index, isHurufMode),
+                    onTap: () => _navigateToTracingDetail(index, isHurufMode),
                   ),
                 ),
               ),
@@ -141,7 +141,7 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
     );
   }
 
-  void _showTracingDialog(int index, bool isHurufMode) {
+  void _navigateToTracingDetail(int index, bool isHurufMode) {
     final letterData = isHurufMode
         ? hijaiyahLetters[index]
         : hijaiyahLetters[index ~/ 3];
@@ -151,14 +151,15 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
         : [letterData.fatha, letterData.kasra, letterData.damma][variationIndex];
     final pronunciationText = isHurufMode
         ? '(${letterData.latin})'
-        : harakatPronunciations[index];  // Ambil dari daftar khusus
+        : harakatPronunciations[index];
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => HijaiyahTracingDialog(
-        letter: displayText,
-        pronunciation: pronunciationText,
-        onClose: () => Navigator.of(context).pop(),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HijaiyahTracingDetailPage(
+          letter: displayText,
+          pronunciation: pronunciationText,
+        ),
       ),
     );
   }

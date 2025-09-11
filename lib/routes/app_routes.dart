@@ -21,7 +21,8 @@ class AppRoutes {
   static const String reading = '/reading';
   static const String qibla = '/qibla';
   static const String wrapped = '/wrapped';
-  static const String hijaiyahTracing = '/hijaiyah-tracing'; // Pastikan didefinisikan
+  static const String hijaiyahTracing = '/hijaiyah-tracing';
+  static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
 
   static final routes = {
     splash: (context) => SplashScreen(),
@@ -33,6 +34,7 @@ class AppRoutes {
     qibla: (context) => QiblaPage(),
     wrapped: (context) => QuranWrappedScreen(),
     hijaiyahTracing: (context) => HijaiyahTracingPage(),
+    
     reading: (context) {
       final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ReadingPage(
