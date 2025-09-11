@@ -6,7 +6,7 @@ class HijaiyahFlashcard extends StatelessWidget {
   final bool isHurufMode;
   final VoidCallback onTap;
 
-  HijaiyahFlashcard({
+  const HijaiyahFlashcard({
     required this.index,
     required this.isHurufMode,
     required this.onTap,

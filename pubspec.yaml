@@ -40,7 +40,20 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+<<<<<<< HEAD
   flutter_lints: ^5.0.0   # linter (cek kode biar rapi)
+=======
+  flutter_lints: ^5.0.0 # Updated from 5.0.0
+  firebase_auth: ^5.3.1 # Updated from 5.3.1
+  cloud_firestore: ^5.4.4 # Updated from 5.4.4
+  get: ^4.6.6
+  geolocator: ^12.0.0
+  flutter_compass: ^0.8.0
+  permission_handler: ^11.3.1
+  http: ^1.1.0
+  geocoding: ^2.1.0  # Untuk reverse geocoding
+  image_picker: ^1.1.2
+>>>>>>> origin/main
 
 flutter:
   uses-material-design: true
@@ -48,6 +61,7 @@ flutter:
   assets:
     - assets/images/Kaaba.png
     - assets/images/muslimah_hijab.png
+    - assets/images/ic_checkmark.png
 
   fonts:
     - family: OpenDyslexic

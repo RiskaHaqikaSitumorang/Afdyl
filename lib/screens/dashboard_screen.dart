@@ -180,7 +180,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
+                          GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, AppRoutes.profile);
+                          },
+                          child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.3),
@@ -192,6 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 24,
                             ),
                           ),
+                        ),
                           GestureDetector(
                             onTap: () {
                               Navigator.pushNamed(context, AppRoutes.wrapped);
@@ -207,6 +212,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 color: Colors.white,
                                 size: 24,
                               ),
+
                             ),
                           ),
                         ],

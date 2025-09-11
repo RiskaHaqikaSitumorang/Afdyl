@@ -9,6 +9,7 @@ import '../screens/quran_page.dart';
 import '../screens/qibla_page.dart';
 import '../screens/reading_page.dart';
 import '../screens/wrapped_screen.dart';
+import '../screens/profile_page.dart';
 import '../screens/hijaiyah_tracing_page.dart';
 
 class AppRoutes {
@@ -21,8 +22,15 @@ class AppRoutes {
   static const String reading = '/reading';
   static const String qibla = '/qibla';
   static const String wrapped = '/wrapped';
+<<<<<<< HEAD
   static const String hijaiyahTracing = '/hijaiyah-tracing';
   static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
+=======
+  static const String profile = '/profile';
+
+
+  static const String hijaiyahTracing = '/hijaiyah-tracing'; // Pastikan didefinisikan
+>>>>>>> origin/main
 
   static final routes = {
     splash: (context) => SplashScreen(),
@@ -33,6 +41,7 @@ class AppRoutes {
     quran: (context) => QuranPage(),
     qibla: (context) => QiblaPage(),
     wrapped: (context) => QuranWrappedScreen(),
+    profile: (context) => ProfilePage(),
     hijaiyahTracing: (context) => HijaiyahTracingPage(),
     
     reading: (context) {

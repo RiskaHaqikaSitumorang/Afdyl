@@ -5,7 +5,7 @@ class HijaiyahTracingDialog extends StatelessWidget {
   final String pronunciation;
   final VoidCallback onClose;
 
-  HijaiyahTracingDialog({
+  const HijaiyahTracingDialog({
     required this.letter,
     required this.pronunciation,
     required this.onClose,
