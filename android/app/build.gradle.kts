@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.afdyl"
-    compileSdk = 34
+    compileSdk = 35
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -20,7 +20,7 @@ android {
     defaultConfig {
         applicationId = "com.example.afdyl"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
     }
