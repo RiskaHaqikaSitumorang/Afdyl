@@ -5,7 +5,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../routes/app_routes.dart';
-import '../screens/wrapped_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -193,23 +192,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 24,
                             ),
                           ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, AppRoutes.wrapped);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.bar_chart,
-                              color: Colors.white,
-                              size: 24,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, AppRoutes.wrapped);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.3),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.bar_chart,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
                           ),
-                        )
                         ],
                       ),
                       const SizedBox(height: 40),
@@ -379,12 +378,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: _buildActivityCard(
                         icon: Icons.text_fields,
-                        title: 'Tracing hijayah',
+                        title: 'Tracing Hijaiyah', // Perbaiki typo dan ubah ke navigasi
                         color: Colors.black,
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Fitur Tracing hijayah sedang dikembangkan')),
-                          );
+                          Navigator.pushNamed(context, AppRoutes.hijaiyahTracing);
                         },
                       ),
                     ),
