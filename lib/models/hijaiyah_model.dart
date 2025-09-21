@@ -1,3 +1,4 @@
+// lib/models/hijaiyah_model.dart
 class HijaiyahLetter {
   final String arabic;
   final String latin;
@@ -51,20 +52,38 @@ final List<HijaiyahLetter> hijaiyahLetters = [
   HijaiyahLetter(arabic: 'م', latin: 'mim', fatha: 'مَ', kasra: 'مِ', damma: 'مُ'),
   HijaiyahLetter(arabic: 'ن', latin: 'nun', fatha: 'نَ', kasra: 'نِ', damma: 'نُ'),
   HijaiyahLetter(arabic: 'و', latin: 'waw', fatha: 'وَ', kasra: 'وِ', damma: 'وُ'),
-  HijaiyahLetter(arabic: 'ه', latin: 'ha', fatha: 'هَ', kasra: 'هِ', damma: 'هُ'),
+  HijaiyahLetter(arabic: 'ه', latin: 'Hā', fatha: 'هَ', kasra: 'هِ', damma: 'هُ'),
   HijaiyahLetter(arabic: 'ي', latin: 'ya', fatha: 'يَ', kasra: 'يِ', damma: 'يُ'),
 ];
 
-// Daftar pelafalan khusus untuk mode harakat (3 variasi per huruf, total 30 item)
+// Daftar pelafalan khusus untuk mode harakat (28 huruf x 3 variasi = 84 item)
 final List<String> harakatPronunciations = [
-  'a', 'i', 'u',  // Alif
+  'a', 'i', 'u',    // Alif
   'ba', 'bi', 'bu',  // Ba
   'ta', 'ti', 'tu',  // Ta
-  'tsa', 'tsi', 'tsu',  // Tsa
+  'tsa', 'tsi', 'tsu', // Tsa
   'ja', 'ji', 'ju',  // Jim
   'ha', 'hi', 'hu',  // Ha
-  'kha', 'khi', 'khu',  // Kha
+  'kha', 'khi', 'khu', // Kha
   'da', 'di', 'du',  // Dal
-  'dza', 'dzi', 'dzu',  // Dzal
+  'dza', 'dzi', 'dzu', // Dzal
   'ra', 'ri', 'ru',  // Ra
+  'za', 'zi', 'zu',  // Zai
+  'sa', 'si', 'su',  // Sin
+  'sya', 'syi', 'syu', // Syin
+  'sha', 'shi', 'shu', // Shad
+  'dha', 'dhi', 'dhu', // Dhad
+  'tha', 'thi', 'thu', // Tha
+  'zha', 'zhi', 'zhu', // Zha
+  'a\'', 'i\'', 'u\'', // Ain (dengan tanda petik untuk membedakan)
+  'gha', 'ghi', 'ghu', // Ghain
+  'fa', 'fi', 'fu',  // Fa
+  'qa', 'qi', 'qu',  // Qaf
+  'ka', 'ki', 'ku',  // Kaf
+  'la', 'li', 'lu',  // Lam
+  'ma', 'mi', 'mu',  // Mim
+  'na', 'ni', 'nu',  // Nun
+  'wa', 'wi', 'wu',  // Waw
+  'ha', 'hi', 'hu',  // Ha
+  'ya', 'yi', 'yu',  // Ya
 ];

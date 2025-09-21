@@ -4,29 +4,42 @@ publish_to: 'none'
 version: 0.1.0
 
 environment:
-    sdk: ^3.7.2
+  sdk: ^3.7.2
+
 dependencies:
-  firebase_core: ^3.15.2
-  firebase_storage: ^12.4.10
   flutter:
     sdk: flutter
-  fluttertoast: ^8.2.8 
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0 # Updated from 5.0.0
-  firebase_auth: ^5.3.1 # Updated from 5.3.1
-  cloud_firestore: ^5.4.4 # Updated from 5.4.4
+  # Firebase core service
+  firebase_core: ^3.15.2
+  # Authentication (login, register, dsb.)
+  firebase_auth: ^5.3.1
+  # Database Firestore
+  cloud_firestore: ^5.4.4
+  # Firebase Storage (upload/download gambar, file)
+  firebase_storage: ^12.4.10
+
+  # State management
   get: ^4.6.6
-  geolocator: ^12.0.0
-  flutter_compass: ^0.8.0
-  permission_handler: ^11.3.1
-  http: ^1.1.0
-  geocoding: ^2.1.0  # Untuk reverse geocoding
-  image_picker: ^1.1.2
 
-  
+  # Lokasi & arah
+  geolocator: ^12.0.0      # ambil posisi GPS
+  geocoding: ^2.1.0        # konversi koordinat ↔ alamat
+  flutter_compass: ^0.8.0  # sensor kompas (arah kiblat)
+  permission_handler: ^11.3.1  # izin akses lokasi, storage, dll.
+
+  # Lainnya
+  http: ^1.1.0             # request API
+  fluttertoast: ^8.2.8     # pesan popup
+  flutter_tts: ^3.8.5      # text-to-speech (bunyi huruf, instruksi)
+  image_picker: ^1.1.2
+  audioplayers: ^6.5.1
+  flutter_lints: ^5.0.0
+
+  # Machine Learning (pakai TensorFlow Lite)
+  tflite_flutter: ^0.11.0
+
+
 flutter:
   uses-material-design: true
 
@@ -34,6 +47,35 @@ flutter:
     - assets/images/Kaaba.png
     - assets/images/muslimah_hijab.png
     - assets/images/ic_checkmark.png
+    - assets/models/best_model.tflite
+    - assets/audio/ain.m4a
+    - assets/audio/alif.m4a
+    - assets/audio/ba.m4a
+    - assets/audio/dal.m4a
+    - assets/audio/dhad.m4a
+    - assets/audio/dzal.m4a
+    - assets/audio/fa.m4a
+    - assets/audio/ghain.m4a
+    - assets/audio/ha.m4a
+    - assets/audio/HHa.m4a
+    - assets/audio/jim.m4a
+    - assets/audio/kaf.m4a
+    - assets/audio/kha.m4a
+    - assets/audio/lam.m4a
+    - assets/audio/mim.m4a
+    - assets/audio/nun.m4a
+    - assets/audio/qaf.m4a
+    - assets/audio/ra.m4a
+    - assets/audio/shad.m4a
+    - assets/audio/sin.m4a
+    - assets/audio/syin.m4a
+    - assets/audio/ta.m4a
+    - assets/audio/tha.m4a
+    - assets/audio/tsa.m4a
+    - assets/audio/waw.m4a
+    - assets/audio/ya.m4a
+    - assets/audio/zai.m4a
+    - assets/audio/zha.m4a
 
   fonts:
     - family: OpenDyslexic

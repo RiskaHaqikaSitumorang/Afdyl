@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/hijaiyah_model.dart';
 import '../widgets/hijaiyah_flashcard.dart';
-import '../widgets/hijaiyah_dialog.dart';
+import 'hijaiyah_tracing_detail_page.dart'; // Impor relatif ke detail page
 
 class HijaiyahTracingPage extends StatefulWidget {
   @override
@@ -125,13 +125,19 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
                     childAspectRatio: 0.85,
                   ),
                   itemCount: isHurufMode
-                      ? hijaiyahLetters.length  // 28 huruf
-                      : 30,  // 10 baris x 3 variasi = 30 item
-                  itemBuilder: (context, index) => HijaiyahFlashcard(
-                    index: index,
-                    isHurufMode: isHurufMode,
-                    onTap: () => _showTracingDialog(index, isHurufMode),
-                  ),
+                      ? hijaiyahLetters.length // 28 huruf
+                      : hijaiyahLetters.length * 3, // 28 huruf x 3 variasi = 84 item
+                  itemBuilder: (context, index) {
+                    if (index >= hijaiyahLetters.length && isHurufMode) {
+                      print('Index out of bounds: $index');
+                      return Container(); // Placeholder untuk menghindari error
+                    }
+                    return HijaiyahFlashcard(
+                      index: index,
+                      isHurufMode: isHurufMode,
+                      onTap: () => _navigateToTracingDetail(index, isHurufMode),
+                    );
+                  },
                 ),
               ),
             ),
@@ -141,24 +147,31 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
     );
   }
 
-  void _showTracingDialog(int index, bool isHurufMode) {
+  void _navigateToTracingDetail(int index, bool isHurufMode) {
+    if (index >= hijaiyahLetters.length && isHurufMode) {
+      print('Warning: Index $index exceeds hijaiyahLetters length');
+      return;
+    }
     final letterData = isHurufMode
         ? hijaiyahLetters[index]
-        : hijaiyahLetters[index ~/ 3];
+        : hijaiyahLetters[index ~/ 3]; // Ambil huruf berdasarkan indeks utama
     final variationIndex = index % 3;
     final displayText = isHurufMode
         ? letterData.arabic
         : [letterData.fatha, letterData.kasra, letterData.damma][variationIndex];
     final pronunciationText = isHurufMode
         ? '(${letterData.latin})'
-        : harakatPronunciations[index];  // Ambil dari daftar khusus
+        : harakatPronunciations[index]; // Gunakan indeks langsung untuk 84 item
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) => HijaiyahTracingDialog(
-        letter: displayText,
-        pronunciation: pronunciationText,
-        onClose: () => Navigator.of(context).pop(),
+    print('Navigating to: letter=$displayText, pronunciation=$pronunciationText');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HijaiyahTracingDetailPage(
+          letter: displayText,
+          pronunciation: pronunciationText,
+        ),
       ),
     );
   }
