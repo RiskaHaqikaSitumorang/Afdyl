@@ -1,73 +1,707 @@
 // lib/screens/reading_page.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
+import '../services/quran_service.dart';
 
-class ReadingPage extends StatelessWidget {
-  final String type; // 'surah' or 'juz'
+class ReadingPage extends StatefulWidget {
+  final String type;
   final int number;
   final String name;
 
   const ReadingPage({
-    super.key,
+    Key? key,
     required this.type,
     required this.number,
     required this.name,
-  });
+  }) : super(key: key);
+
+  @override
+  _ReadingPageState createState() => _ReadingPageState();
+}
+
+class _ReadingPageState extends State<ReadingPage> {
+  final QuranService _quranService = QuranService();
+  List<Map<String, dynamic>> ayahs = [];
+  List<Map<String, dynamic>> timings = [];
+  bool isLoading = true;
+  String errorMessage = '';
+  bool showMeaning = false;
+  double fontSize = 36.0;
+  double ayahSpacing = 16.0;
+  int currentActiveAyah = 0;
+  int currentActiveWord = 0;
+  bool autoHighlight = false;
+  final ScrollController _scrollController = ScrollController();
+  List<GlobalKey> _ayahKeys = [];
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  StreamSubscription? _positionSubscription;
+  StreamSubscription? _completionSubscription;
+
+  // sizing getters
+  double get ayahNumberSize => (fontSize * 0.65).clamp(14.0, 32.0);
+  double get wordPadding => (fontSize * 0.35).clamp(6.0, 18.0);
+  double get wordSpacing => (fontSize * 0.25).clamp(6.0, 20.0);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAyahs();
+    // Listen for audio completion to move to next ayah
+    _completionSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.completed && autoHighlight) {
+        _nextAyah();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _audioPlayer.dispose();
+    _positionSubscription?.cancel();
+    _completionSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadAyahs() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+    });
+    try {
+      final data = await _quranService.fetchAyahs(widget.type, widget.number);
+      final timingData = await _quranService.fetchTimings();
+      setState(() {
+        ayahs = data;
+        timings = timingData;
+        isLoading = false;
+        _ayahKeys = List.generate(ayahs.length, (_) => GlobalKey());
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Gagal memuat ayat: ${e.toString()}';
+        isLoading = false;
+      });
+    }
+  }
+
+  // Get timings for a specific ayah
+  List<dynamic> _getAyahTimings(int surah, int ayah) {
+    final ayahTiming = timings.firstWhere(
+      (t) => t['surah'] == surah && t['ayah'] == ayah,
+      orElse: () => {'segments': []},
+    );
+    return ayahTiming['segments'] as List<dynamic>;
+  }
+
+  // Auto highlight control with audio sync
+  void _startAutoHighlight() {
+    _stopAutoHighlight();
+    setState(() => autoHighlight = true);
+    _playCurrentAyahAudio();
+  }
+
+  void _stopAutoHighlight() {
+    _audioPlayer.stop();
+    _positionSubscription?.cancel();
+    setState(() => autoHighlight = false);
+  }
+
+  void _toggleAuto() {
+    setState(() {
+      autoHighlight = !autoHighlight;
+    });
+    if (autoHighlight) {
+      _startAutoHighlight();
+    } else {
+      _stopAutoHighlight();
+    }
+  }
+
+  void _playCurrentAyahAudio() {
+    if (ayahs.isEmpty || currentActiveAyah >= ayahs.length) return;
+    final ayah = ayahs[currentActiveAyah];
+    final audioUrl = ayah['audio'] as String?;
+    if (audioUrl == null || audioUrl.isEmpty) {
+      setState(() {
+        errorMessage = 'Audio tidak tersedia untuk ayat ini';
+      });
+      return;
+    }
+
+    _audioPlayer.play(UrlSource(audioUrl));
+
+    // Listen to position for word sync
+    _positionSubscription?.cancel();
+    _positionSubscription = _audioPlayer.onPositionChanged.listen((position) {
+      final ms = position.inMilliseconds;
+      final segments = _getAyahTimings(widget.number, ayah['number']);
+      final currentWords = (ayahs[currentActiveAyah]['words'] as List<dynamic>?) ?? [];
+      
+      if (segments.isNotEmpty && currentWords.isNotEmpty) {
+        for (final segment in segments) {
+          if (segment.length >= 4) {
+            final startMs = segment[2] as int;
+            final endMs = segment[3] as int;
+            final wordIndex = segment[0] as int; - 1; // 1-based to 0-based index
+            if (ms >= startMs && ms < endMs && wordIndex < currentWords.length) {
+              setState(() {
+                currentActiveWord = wordIndex;
+              });
+              _scrollToAyah(currentActiveAyah);
+              break;
+            }
+          }
+        }
+      }
+    });
+  }
+
+  void _nextAyah() {
+    if (currentActiveAyah < ayahs.length - 1) {
+      setState(() {
+        currentActiveAyah++;
+        currentActiveWord = 0;
+      });
+      _scrollToAyah(currentActiveAyah);
+      if (autoHighlight) {
+        _playCurrentAyahAudio();
+      }
+    } else {
+      _stopAutoHighlight();
+    }
+  }
+
+  void _previousAyah() {
+    if (currentActiveAyah > 0) {
+      setState(() {
+        currentActiveAyah--;
+        currentActiveWord = 0;
+      });
+      _scrollToAyah(currentActiveAyah);
+      if (autoHighlight) {
+        _playCurrentAyahAudio();
+      }
+    }
+  }
+
+  void _nextWord({bool autoStarted = false}) {
+    if (ayahs.isEmpty) return;
+    final currentWords = (ayahs[currentActiveAyah]['words'] as List<dynamic>?) ?? [];
+    if (currentWords.isNotEmpty) {
+      if (currentActiveWord < currentWords.length - 1) {
+        setState(() => currentActiveWord++);
+      } else {
+        _nextAyah();
+      }
+    } else {
+      _nextAyah();
+    }
+  }
+
+  void _previousWord() {
+    if (ayahs.isEmpty) return;
+    final currentWords = (ayahs[currentActiveAyah]['words'] as List<dynamic>?) ?? [];
+    if (currentWords.isNotEmpty) {
+      if (currentActiveWord > 0) {
+        setState(() => currentActiveWord--);
+      } else {
+        _previousAyah();
+      }
+    } else {
+      _previousAyah();
+    }
+  }
+
+  void _scrollToAyah(int index) {
+    if (index < 0 || index >= _ayahKeys.length) return;
+    final key = _ayahKeys[index];
+    if (key.currentContext != null) {
+      Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        alignment: 0.1,
+      );
+    } else {
+      // fallback: estimate position
+      final position = index * (120.0 + ayahSpacing);
+      _scrollController.animateTo(
+        position.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // Convert to Arabic numerals (simple)
+  String getArabicNumber(int number) {
+    const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return number.toString().split('').map((d) => arabicDigits[int.parse(d)]).join('');
+  }
+
+  // Widget for the numbered badge with expanded touch area
+  Widget _buildAyahNumberWidget(int ayahNumber, bool isActiveAyah) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          currentActiveAyah = ayahs.indexWhere((ayah) => ayah['number'] == ayahNumber);
+          currentActiveWord = 0;
+        });
+        _scrollToAyah(currentActiveAyah);
+        if (autoHighlight) {
+          _playCurrentAyahAudio();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0), // Expanded touch area
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: wordPadding * 0.45, vertical: wordPadding * 0.28),
+          margin: EdgeInsets.only(left: wordSpacing * 0.5), // Slightly larger margin
+          decoration: BoxDecoration(
+            color: isActiveAyah ? const Color(0xFFD4A574) : const Color(0xFFD4A574).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isActiveAyah ? const Color(0xFFB8860B) : const Color(0xFFB8860B).withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            getArabicNumber(ayahNumber),
+            style: TextStyle(
+              color: isActiveAyah ? Colors.white : Colors.black.withOpacity(0.05),
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Amiri',
+              fontSize: ayahNumberSize,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Word visual used inside WidgetSpan
+  Widget _wordWidget(Map<String, dynamic> word, bool isActive, bool isRead, bool isActiveAyah, int ayahIndex, int wordIndex) {
+    final arabicText = word['text'] ?? '';
+    Color backgroundColor;
+    Color textColor;
+
+    if (isActive) {
+      backgroundColor = const Color(0xFFFFE082);
+      textColor = Colors.black87;
+    } else if (isRead) {
+      backgroundColor = const Color(0xFFE8F5E8);
+      textColor = Colors.black54;
+    } else if (isActiveAyah) {
+      backgroundColor = Colors.white;
+      textColor = Colors.black87;
+    } else {
+      backgroundColor = Colors.grey.withOpacity(0.05); // Almost transparent
+      textColor = Colors.black.withOpacity(0.05); // Almost transparent
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (!autoHighlight) {
+          setState(() {
+            currentActiveAyah = ayahIndex;
+            currentActiveWord = wordIndex;
+          });
+          _scrollToAyah(ayahIndex);
+          if (autoHighlight) {
+            _playCurrentAyahAudio();
+          }
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: wordPadding, vertical: wordPadding * 0.7),
+        margin: EdgeInsets.only(right: wordSpacing * 0.15, left: 0),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular((fontSize * 0.25).clamp(6.0, 14.0)),
+          border: isActive
+              ? Border.all(color: const Color(0xFFD4A574), width: 2)
+              : null,
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFD4A574).withOpacity(0.25),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          arabicText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontFamily: 'Amiri',
+            fontWeight: FontWeight.bold,
+            height: 1.4,
+            color: textColor,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAyahWidget(int ayahIndex) {
+    final ayah = ayahs[ayahIndex];
+    final ayahNumber = ayah['number'] ?? ayahIndex + 1;
+    final words = ayah['words'] as List<dynamic>? ?? [];
+    final isActiveAyah = ayahIndex == currentActiveAyah;
+
+    return Container(
+      key: _ayahKeys.isNotEmpty && ayahIndex < _ayahKeys.length ? _ayahKeys[ayahIndex] : null,
+      margin: EdgeInsets.only(bottom: ayahSpacing),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isActiveAyah ? Colors.white : Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: isActiveAyah
+            ? [
+                const BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Arabic line(s) with inline words and the number attached to the last word
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: words.isNotEmpty
+                ? RichText(
+                    text: TextSpan(
+                      children: _buildInlineWordSpans(words, ayahIndex, ayahNumber),
+                    ),
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          ayah['text'] ?? '',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontFamily: 'Amiri',
+                            fontWeight: FontWeight.bold,
+                            height: 1.8,
+                            color: isActiveAyah ? Colors.black87 : Colors.black.withOpacity(0.05),
+                          ),
+                        ),
+                      ),
+                      _buildAyahNumberWidget(ayahNumber, isActiveAyah),
+                    ],
+                  ),
+          ),
+
+          // Translations / meanings (optional)
+          if (showMeaning && isActiveAyah)
+            const SizedBox(height: 8),
+          if (showMeaning && isActiveAyah)
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 6,
+              children: (words.isNotEmpty
+                      ? words.map<Widget>((w) {
+                          final idx = words.indexOf(w);
+                          final isActiveWord = isActiveAyah && idx == currentActiveWord;
+                          return ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: fontSize * 4.0),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isActiveWord ? Colors.amber.shade100 : Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.black12),
+                              ),
+                              child: Text(
+                                w['translation'] ?? '',
+                                style: TextStyle(
+                                  fontSize: (fontSize * 0.5).clamp(12.0, 24.0),
+                                  fontFamily: 'OpenDyslexic',
+                                  color: Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          );
+                        }).toList()
+                      : [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.black12),
+                            ),
+                            child: Text(
+                              ayah['translation'] ?? '',
+                              style: TextStyle(
+                                fontSize: (fontSize * 0.5).clamp(12.0, 24.0),
+                                fontFamily: 'OpenDyslexic',
+                                color: Colors.black87,
+                              ),
+                            ),
+                          )
+                        ]),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Build InlineSpans for words where the last word is combined with the ayah-number widget
+  List<InlineSpan> _buildInlineWordSpans(List<dynamic> words, int ayahIndex, int ayahNumber) {
+    final List<InlineSpan> spans = [];
+    for (int i = 0; i < words.length; i++) {
+      final word = Map<String, dynamic>.from(words[i]);
+      final isActiveAyah = ayahIndex == currentActiveAyah;
+      final isActiveWord = isActiveAyah && (i == currentActiveWord);
+      final isReadWord = ayahIndex < currentActiveAyah || (isActiveAyah && i < currentActiveWord);
+
+      final Widget wordWidget = _wordWidget(word, isActiveWord, isReadWord, isActiveAyah, ayahIndex, i);
+
+      if (i == words.length - 1) {
+        spans.add(
+          WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                wordWidget,
+                SizedBox(width: wordSpacing * 0.3),
+                _buildAyahNumberWidget(ayahNumber, isActiveAyah),
+              ],
+            ),
+          ),
+        );
+      } else {
+        spans.add(WidgetSpan(alignment: PlaceholderAlignment.middle, child: wordWidget));
+        spans.add(const TextSpan(text: ' '));
+      }
+    }
+    return spans;
+  }
+
+  void _showSettings() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFFF5F0E8),
+              title: const Text('Pengaturan', style: TextStyle(fontFamily: 'OpenDyslexic')),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Ukuran Font', style: TextStyle(fontFamily: 'OpenDyslexic')),
+                    Slider(
+                      value: fontSize,
+                      min: 16.0,
+                      max: 60.0,
+                      divisions: 22,
+                      label: fontSize.round().toString(),
+                      activeColor: const Color(0xFFD4A574),
+                      onChanged: (value) {
+                        setStateDialog(() => fontSize = value);
+                        setState(() => fontSize = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Jarak Antar Ayat', style: TextStyle(fontFamily: 'OpenDyslexic')),
+                    Slider(
+                      value: ayahSpacing,
+                      min: 6.0,
+                      max: 48.0,
+                      divisions: 21,
+                      label: ayahSpacing.round().toString(),
+                      activeColor: const Color(0xFFD4A574),
+                      onChanged: (value) {
+                        setStateDialog(() => ayahSpacing = value);
+                        setState(() => ayahSpacing = value);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Tampilkan Terjemahan', style: TextStyle(fontFamily: 'OpenDyslexic')),
+                        Switch(
+                          value: showMeaning,
+                          activeColor: const Color(0xFFD4A574),
+                          onChanged: (value) {
+                            setStateDialog(() => showMeaning = value);
+                            setState(() => showMeaning = value);
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Mode Otomatis (Audio)', style: TextStyle(fontFamily: 'OpenDyslexic')),
+                        Switch(
+                          value: autoHighlight,
+                          activeColor: const Color(0xFFD4A574),
+                          onChanged: (value) {
+                            setStateDialog(() => autoHighlight = value);
+                            setState(() => autoHighlight = value);
+                            if (value) {
+                              _startAutoHighlight();
+                            } else {
+                              _stopAutoHighlight();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Tutup', style: TextStyle(color: Color(0xFFD4A574))),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFB8D4B8),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, color: Colors.black, size: 20),
-                      onPressed: () => Navigator.pop(context),
+      backgroundColor: const Color(0xFFF5F0E8),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFE8DCC6),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () {
+            _stopAutoHighlight();
+            Navigator.pop(context);
+          },
+        ),
+        title: Text(
+          widget.name,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'OpenDyslexic',
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.black87),
+            onPressed: _showSettings,
+          ),
+        ],
+      ),
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4A574)),
+              ),
+            )
+          : errorMessage.isNotEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      errorMessage,
+                      style: const TextStyle(
+                        fontFamily: 'OpenDyslexic',
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  Expanded(
-                    child: Text(
-                      '$name ($type $number)',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                        fontFamily: 'OpenDyslexic',
+                )
+              : Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8DCC6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 2,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.skip_previous, size: 32),
+                            color: const Color(0xFFD4A574),
+                            onPressed: _previousWord,
+                          ),
+                          const SizedBox(width: 18),
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFD4A574),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                autoHighlight ? Icons.pause : Icons.play_arrow,
+                                size: 36,
+                                color: Colors.white,
+                              ),
+                              onPressed: _toggleAuto,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          IconButton(
+                            icon: const Icon(Icons.skip_next, size: 32),
+                            color: const Color(0xFFD4A574),
+                            onPressed: () => _nextWord(),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  SizedBox(width: 40),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  'Halaman Pembacaan untuk $name ($type $number)\n(TODO: Tambahkan konten ayat di sini)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                  ),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(20),
+                        itemCount: ayahs.length,
+                        itemBuilder: (context, index) {
+                          return _buildAyahWidget(index);
+                        },
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(color: Color(0xFFE8DCC6)),
+                      child: Text(
+                        'Ayat ${currentActiveAyah + 1} dari ${ayahs.length}',
+                        style: const TextStyle(
+                          fontFamily: 'OpenDyslexic',
+                          fontSize: 14,
+                          color: Colors.black54,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
