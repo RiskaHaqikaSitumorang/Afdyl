@@ -52,6 +52,7 @@ flutter:
     - assets/images/ic_sound_wave.png
     - assets/images/img_masjid_pink.png
     - assets/images/ic_rank.png
+    - assets/images/bg_wrapped.png
     - assets/models/best_model.tflite
     - assets/audio/ain.m4a
     - assets/audio/alif.m4a

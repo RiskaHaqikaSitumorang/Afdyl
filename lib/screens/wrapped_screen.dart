@@ -1,54 +1,89 @@
 import 'package:flutter/material.dart';
 
 class QuranWrappedScreen extends StatefulWidget {
-  const QuranWrappedScreen({super.key});
-
   @override
   _QuranWrappedScreenState createState() => _QuranWrappedScreenState();
 }
 
 class _QuranWrappedScreenState extends State<QuranWrappedScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late List<Animation<double>> _slideAnimations;
-  final List<Map<String, String>> topSurahs = [
-    {'rank': '#1', 'name': 'Al-Ikhlas'},
-    {'rank': '#2', 'name': 'An-Nas'},
-    {'rank': '#3', 'name': 'Al-Falaq'},
-    {'rank': '#4', 'name': 'Al-Maun'},
-    {'rank': '#5', 'name': 'Al-Fatihah'},
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  // TODO: Implement actual reading statistics logic
+  // TODO: Connect with database to track user's reading habits
+  // TODO: Calculate actual most read surahs based on user data
+  // TODO: Add year selection functionality (available once a year)
+  // TODO: Implement analytics for reading time, frequency, etc.
+  // TODO: Add sharing functionality for wrapped results
+  // TODO: Store wrapped data for historical comparison
+  
+  final List<Map<String, dynamic>> topSurahs = [
+    {
+      'rank': 1,
+      'name': 'Al-Ikhlas',
+    },
+    {
+      'rank': 2,
+      'name': 'An-Nas',
+    },
+    {
+      'rank': 3,
+      'name': 'Al-Falaq',
+    },
+    {
+      'rank': 4,
+      'name': 'Al-Maun',
+    },
+    {
+      'rank': 5,
+      'name': 'Al-Fatihah',
+    },
   ];
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
+    
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _slideAnimations = List.generate(
-      topSurahs.length,
-      (index) => Tween<double>(
-        begin: -100.0,
-        end: 0.0,
-      ).animate(CurvedAnimation(
-        parent: _controller,
-        curve: Interval(
-          index * 0.2,
-          1.0,
-          curve: Curves.easeOutBack,
-        ),
-      )),
+    
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.forward();
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOut,
+    ));
+
+    // Start animations
+    _fadeController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _slideController.forward();
     });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
@@ -56,130 +91,176 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF5E6E8),
-              Color(0xFFE8B4B8),
-            ],
-          ),
+        decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/bg_wrapped.png'),
             fit: BoxFit.cover,
-            opacity: 0.1,
-            alignment: Alignment.center,
           ),
         ),
         child: SafeArea(
-          child: Stack(
+          child: Column(
             children: [
-              // Tombol back
-              Positioned(
-                top: 8,
-                left: 8,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              Column(
-                children: [
-                  const SizedBox(height: 95), // Turunin title sedikit
-                  const Text(
-                    'Top Surah\nKamu!',
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                      fontFamily: 'OpenDyslexic',
-                      height: 1.2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 30),
-                  Expanded(
-                    child: Center(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: topSurahs.length,
-                        itemBuilder: (context, index) {
-                          final surah = topSurahs[index];
-                          return AnimatedBuilder(
-                            animation: _slideAnimations[index],
-                            builder: (context, child) {
-                              return Transform.translate(
-                                offset: Offset(_slideAnimations[index].value, 0),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 14.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      // Rank sejajar pakai width tetap
-                                      SizedBox(
-                                        width: 50,
-                                        child: Text(
-                                          surah['rank']!,
-                                          textAlign: TextAlign.right,
-                                          style: const TextStyle(
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'OpenDyslexic',
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      // Kotak putih
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 20),
-                                      // Nama surah
-                                      Text(
-                                        surah['name']!,
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          color: Colors.black,
-                                          fontFamily: 'OpenDyslexic',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
+              // Header with back button
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Title
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Transform.rotate(
+                          angle: -0.05, // Slight rotation to the left
+                          child: Column(
+                            children: [
+                              Text(
+                                'Top Surah',
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'OpenDyslexic',
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              Text(
+                                'Kamu!',
+                                style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontFamily: 'OpenDyslexic',
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 60),
+
+                      // Surah List
+                      SlideTransition(
+                        position: _slideAnimation,
+                        child: Column(
+                          children: topSurahs.asMap().entries.map((entry) {
+                            int index = entry.key;
+                            Map<String, dynamic> surah = entry.value;
+                            
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 24),
+                              child: _buildSurahItem(surah, index),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+                      const Spacer(),
+
+                      // App branding
+                      FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 40),
+                          child: Text(
+                            'DysQuran',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.8),
+                              fontFamily: 'OpenDyslexic',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 25),
-                  const Text(
-                    'Quran Wrapped',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Color(0xFF388E3C),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'OpenDyslexic',
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSurahItem(Map<String, dynamic> surah, int index) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 800 + (index * 150)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: Row(
+              children: [
+                // Rank number
+                Text(
+                  '#${surah['rank']}',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    fontFamily: 'OpenDyslexic',
+                  ),
+                ),
+                
+                const SizedBox(width: 24),
+                
+                // Surah icon placeholder (cream colored rounded square)
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F5DC),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                
+                const SizedBox(width: 24),
+                
+                // Surah name
+                Text(
+                  surah['name'],
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontFamily: 'OpenDyslexic',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
