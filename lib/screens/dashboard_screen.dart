@@ -173,84 +173,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     bottomRight: Radius.circular(30),
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GestureDetector(
-                          onTap: () {
-                            Navigator.pushNamed(context, AppRoutes.profile);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 24,
-                            ),
+                child: Stack(
+                  children: [
+                    // Background image dengan opacity
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(30),
+                          bottomRight: Radius.circular(30),
+                        ),
+                        child: Opacity(
+                          opacity: 0.3,
+                          child: Image.asset(
+                            'assets/images/img_masjid_pink.png',
+                            fit: BoxFit.cover,
                           ),
                         ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.wrapped);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.3),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.bar_chart,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-
-                            ),
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 40),
-                      Text(
-                        currentTime,
-                        style: const TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'OpenDyslexic',
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    ),
+                    // Content
+                    Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.access_time,
-                            color: Colors.white.withOpacity(0.8),
-                            size: 16,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                              onTap: () {
+                                Navigator.pushNamed(context, AppRoutes.profile);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.3),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushNamed(context, AppRoutes.wrapped);
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Image.asset(
+                                    'assets/images/ic_rank.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(height: 40),
                           Text(
-                            prayerTime,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.9),
+                            currentTime,
+                            style: const TextStyle(
+                              fontSize: 64,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                               fontFamily: 'OpenDyslexic',
+                              letterSpacing: 2,
                             ),
                           ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                color: Colors.white.withOpacity(0.8),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                prayerTime,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontFamily: 'OpenDyslexic',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 30),
                         ],
                       ),
-                      const SizedBox(height: 30),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),
@@ -361,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Expanded(
                       child: _buildActivityCard(
-                        icon: Icons.book,
+                        imagePath: 'assets/images/ic_quran.png',
                         title: 'Al-Quran',
                         color: const Color(0xFFE74C3C),
                         onTap: () {
@@ -372,7 +393,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildActivityCard(
-                        icon: Icons.location_city,
+                        imagePath: 'assets/images/Kaaba.png',
                         title: 'Qibla',
                         color: Colors.black,
                         onTap: () {
@@ -383,7 +404,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildActivityCard(
-                        icon: Icons.text_fields,
+                        imagePath: 'assets/images/ic_hijaiyah.png',
                         title: 'Tracing Hijaiyah', // Perbaiki typo dan ubah ke navigasi
                         color: Colors.black,
                         onTap: () {
@@ -394,7 +415,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildActivityCard(
-                        icon: Icons.pause,
+                        imagePath: 'assets/images/ic_sound_wave.png',
                         title: 'Latihan',
                         color: const Color(0xFF52C41A),
                         onTap: () {
@@ -488,7 +509,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActivityCard({
-    required IconData icon,
+    required String imagePath,
     required String title,
     required Color color,
     required VoidCallback onTap,
@@ -517,10 +538,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
             const SizedBox(height: 12),
