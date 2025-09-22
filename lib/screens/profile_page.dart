@@ -1,54 +1,107 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  _ProfilePageState createState() => _ProfilePageState();
+  State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _isEditing = false;
-  File? _imageFile;
+  final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final _storage = FirebaseStorage.instance;
 
-  final _nameController = TextEditingController(text: 'Muhammad yusuf');
-  final _emailController =
-      TextEditingController(text: 'Muhammadysf@gmail.com');
+  bool _isEditing = false;
+  bool _loading = true;
+  File? _imageFile;
+  String? _photoUrl;
+
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _oldPasswordController.dispose();
-    _newPasswordController.dispose();
-    super.dispose();
+   @override
+  void initState() {
+    super.initState();
+    _loadUserData();
   }
 
-  void _toggleEdit() {
-    if (_isEditing) {
-      // Simpan perubahan → tampilkan popup sukses
-      _showSuccessDialog();
+  Future<void> _loadUserData() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final data = doc.data();
+      if (data != null) {
+        _nameController.text = data['username'] ?? '';
+        _emailController.text = data['email'] ?? user.email ?? '';
+        _photoUrl = data['photoUrl'];
+      }
     }
-    setState(() {
-      _isEditing = !_isEditing;
-    });
+    setState(() => _loading = false);
   }
 
-  /// Popup auto-close
+  Future<String?> _uploadImage(File image) async {
+    final uid = _auth.currentUser!.uid;
+    final ref = _storage.ref().child('user_photos/$uid.jpg');
+    await ref.putFile(image);
+    return ref.getDownloadURL();
+  }
+
+  void _toggleEdit() async {
+    if (_isEditing) {
+      await _saveChanges();
+    }
+    setState(() => _isEditing = !_isEditing);
+  }
+
+  Future<void> _saveChanges() async {
+    try {
+      final uid = _auth.currentUser!.uid;
+      String? photoUrl = _photoUrl;
+
+      if (_imageFile != null) {
+        photoUrl = await _uploadImage(_imageFile!);
+      }
+
+      await _firestore.collection('users').doc(uid).update({
+        'username': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'photoUrl': photoUrl,
+      });
+
+      if (_newPasswordController.text.isNotEmpty &&
+          _oldPasswordController.text.isNotEmpty) {
+        // Re-authenticate sebelum ganti password
+        final cred = EmailAuthProvider.credential(
+          email: _auth.currentUser!.email!,
+          password: _oldPasswordController.text.trim(),
+        );
+        await _auth.currentUser!.reauthenticateWithCredential(cred);
+        await _auth.currentUser!.updatePassword(_newPasswordController.text.trim());
+      }
+
+      _showSuccessDialog();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan: $e')),
+      );
+    }
+  }
+
   void _showSuccessDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (_) {
         Future.delayed(const Duration(seconds: 2), () {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop(); // tutup popup otomatis
-          }
+          if (Navigator.of(context).canPop()) Navigator.of(context).pop();
         });
 
         return Dialog(
@@ -267,7 +320,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ] else ...[
                 _buildSectionField(
                   label: "Password",
-                  controller: TextEditingController(text: "********"),
+                  controller: TextEditingController(text: ""),
                   enabled: false,
                 ),
                 const SizedBox(height: 24),
