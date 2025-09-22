@@ -45,9 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- Lokasi (sudah ada sebelumnya) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Aplikasi ini memerlukan akses lokasi untuk menentukan arah Qibla, menampilkan lokasi Anda di dashboard, dan menyediakan jadwal sholat.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Aplikasi ini memerlukan akses lokasi terus-menerus untuk menentukan arah Qibla, menampilkan lokasi Anda di dashboard, dan menyediakan jadwal sholat bahkan saat aplikasi tidak aktif.</string>
+
+	<!-- Tambahan Microphone & Speech Recognition -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Aplikasi ini memerlukan akses mikrofon untuk latihan pengucapan dan pengenalan suara.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Aplikasi ini memerlukan pengenalan suara untuk latihan membaca dan melatih pengucapan kata.</string>
 </dict>
 </plist>

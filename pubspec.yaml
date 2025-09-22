@@ -36,6 +36,7 @@ dependencies:
   audioplayers: ^6.5.1
   flutter_lints: ^5.0.0
   cupertino_icons: ^1.0.2
+  speech_to_text: ^7.3.0
 
   # Machine Learning (pakai TensorFlow Lite)
   tflite_flutter: ^0.11.0
@@ -54,6 +55,7 @@ flutter:
     - assets/images/img_masjid_pink.png
     - assets/images/ic_rank.png
     - assets/images/bg_wrapped.png
+    - assets/images/pressed.png
     - assets/models/best_model.tflite
     - assets/audio/ain.m4a
     - assets/audio/alif.m4a

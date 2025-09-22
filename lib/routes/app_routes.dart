@@ -11,6 +11,7 @@ import '../screens/wrapped_screen.dart';
 import '../screens/profile_page.dart';
 import '../screens/hijaiyah_tracing_page.dart' as tracing;
 import '../screens/hijaiyah_tracing_detail_page.dart' as detail;
+import '../screens/latihan_kata_page.dart' as latihan; // Pastikan import ini benar
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -23,8 +24,9 @@ class AppRoutes {
   static const String qibla = '/qibla';
   static const String wrapped = '/wrapped';
   static const String profile = '/profile';
-  static const String hijaiyahTracing = '/hijaiyah-tracing'; // Flashcard page
-  static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail'; // Tracing canvas page
+  static const String hijaiyahTracing = '/hijaiyah-tracing';
+  static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
+  static const String latihanKata = '/latihan-kata';
 
   static final routes = <String, WidgetBuilder>{
     splash: (context) => SplashScreen(),
@@ -36,9 +38,9 @@ class AppRoutes {
     qibla: (context) => QiblaPage(),
     wrapped: (context) => QuranWrappedScreen(),
     profile: (context) => ProfilePage(),
-    hijaiyahTracing: (context) => tracing.HijaiyahTracingPage(), // Gunakan alias
+    hijaiyahTracing: (context) => tracing.HijaiyahTracingPage(),
     hijaiyahTracingDetail: (context) => detail.HijaiyahTracingDetailPage(
-      letter: '', // Default, atau gunakan arguments jika diperlukan
+      letter: '',
       pronunciation: '',
     ),
     reading: (context) {
@@ -49,5 +51,6 @@ class AppRoutes {
         name: args?['name'] as String? ?? 'Default',
       );
     },
+    latihanKata: (context) => latihan.LatihanKataPage(), // Pastikan ini mengarah ke class yang benar
   };
 }

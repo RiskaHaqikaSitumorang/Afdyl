@@ -24,11 +24,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _startTimeUpdate();
-    _getCurrentLocation(); // Ambil lokasi saat inisialisasi
+    _getCurrentLocation();
   }
 
   void _startTimeUpdate() {
-    _updateTime(); // Update awal
+    _updateTime();
     const Duration updateInterval = Duration(seconds: 1);
     _timer = Timer.periodic(updateInterval, (timer) {
       if (mounted) {
@@ -175,7 +175,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 child: Stack(
                   children: [
-                    // Background image dengan opacity
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.only(
@@ -191,7 +190,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                     ),
-                    // Content
                     Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Column(
@@ -200,22 +198,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               GestureDetector(
-                              onTap: () {
-                                Navigator.pushNamed(context, AppRoutes.profile);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 24,
+                                onTap: () {
+                                  Navigator.pushNamed(context, AppRoutes.profile);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.3),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
-                            ),
                               GestureDetector(
                                 onTap: () {
                                   Navigator.pushNamed(context, AppRoutes.wrapped);
@@ -405,7 +403,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Expanded(
                       child: _buildActivityCard(
                         imagePath: 'assets/images/ic_hijaiyah.png',
-                        title: 'Tracing Hijaiyah', // Perbaiki typo dan ubah ke navigasi
+                        title: 'Tracing Hijaiyah',
                         color: Colors.black,
                         onTap: () {
                           Navigator.pushNamed(context, AppRoutes.hijaiyahTracing);
@@ -419,9 +417,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Latihan',
                         color: const Color(0xFF52C41A),
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Fitur Latihan sedang dikembangkan')),
-                          );
+                          Navigator.pushNamed(context, AppRoutes.latihanKata); // Arahkan ke LatihanKataPage
                         },
                       ),
                     ),
