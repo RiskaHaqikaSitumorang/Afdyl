@@ -1,3 +1,4 @@
+// lib/screens/dashboard_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -181,12 +182,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           bottomLeft: Radius.circular(30),
                           bottomRight: Radius.circular(30),
                         ),
-                        child: Opacity(
-                          opacity: 0.3,
-                          child: Image.asset(
-                            'assets/images/img_masjid_pink.png',
-                            fit: BoxFit.cover,
-                          ),
+                        child: Image.asset(
+                          'assets/images/img_masjid_pink.png',
+                          fit: BoxFit.cover,
+                          color: Colors.white.withOpacity(0.01),
+                          colorBlendMode: BlendMode.srcATop,
                         ),
                       ),
                     ),
@@ -204,7 +204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -223,7 +223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   height: 40,
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Image.asset(
@@ -251,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               Icon(
                                 Icons.access_time,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                                 size: 16,
                               ),
                               const SizedBox(width: 8),
@@ -259,7 +259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 prayerTime,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.withValues(alpha: 0.9),
                                   fontFamily: 'OpenDyslexic',
                                 ),
                               ),
@@ -283,7 +283,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     borderRadius: BorderRadius.circular(15),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -294,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD4C785).withOpacity(0.2),
+                          color: const Color(0xFFD4C785).withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -417,7 +417,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Latihan',
                         color: const Color(0xFF52C41A),
                         onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.latihanKata); // Arahkan ke LatihanKataPage
+                          Navigator.pushNamed(context, AppRoutes.latihanKata);
                         },
                       ),
                     ),
@@ -448,9 +448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: _buildVideoCard(
                             title: 'Huruf Alif',
                             onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Memutar video Huruf Alif')),
-                              );
+                              Navigator.pushNamed(context, AppRoutes.hijaiyahRecognition);
                             },
                           ),
                         ),
@@ -519,7 +517,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -531,7 +529,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
@@ -572,7 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -586,8 +584,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    const Color(0xFF8FBC8F).withOpacity(0.8),
-                    const Color(0xFF7BA77B).withOpacity(0.9),
+                    const Color(0xFF8FBC8F).withValues(alpha: 0.8),
+                    const Color(0xFF7BA77B).withValues(alpha: 0.9),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(15),
@@ -598,7 +596,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
