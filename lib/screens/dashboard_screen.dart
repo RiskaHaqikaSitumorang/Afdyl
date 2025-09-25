@@ -1,4 +1,3 @@
-// lib/screens/dashboard_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,16 +5,20 @@ import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../routes/app_routes.dart';
+import '../services/quran_service.dart';
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
-  _DashboardScreenState createState() => _DashboardScreenState();
+  DashboardScreenState createState() => DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class DashboardScreenState extends State<DashboardScreen> {
+  final QuranService _quranService = QuranService();
   String currentTime = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
   String prayerTime = "Memuat jadwal sholat...";
-  String lastRead = "Q.S Al-Fatihah";
+  Map<String, dynamic> lastRead = {};
   String location = "Mendapatkan lokasi...";
   late Timer _timer;
   double? _latitude;
@@ -26,6 +29,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _startTimeUpdate();
     _getCurrentLocation();
+    _loadLastRead();
   }
 
   void _startTimeUpdate() {
@@ -45,22 +49,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
   }
 
+  Future<void> _loadLastRead() async {
+    try {
+      final data = await _quranService.fetchLastRead();
+      if (mounted) {
+        setState(() {
+          lastRead = data;
+        });
+      }
+    } catch (e) {
+      print('Error in _loadLastRead: $e');
+      if (mounted) {
+        setState(() {
+          lastRead = {};
+        });
+      }
+    }
+  }
+
   Future<void> _getCurrentLocation() async {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() {
-            location = "Izin lokasi ditolak";
-          });
+          if (mounted) {
+            setState(() {
+              location = "Izin lokasi ditolak";
+            });
+          }
           return;
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
-        });
+        if (mounted) {
+          setState(() {
+            location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
+          });
+        }
         return;
       }
 
@@ -68,16 +94,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         desiredAccuracy: LocationAccuracy.high,
         timeLimit: Duration(seconds: 10),
       );
-      setState(() {
-        _latitude = position.latitude;
-        _longitude = position.longitude;
-      });
+      if (mounted) {
+        setState(() {
+          _latitude = position.latitude;
+          _longitude = position.longitude;
+        });
+      }
       await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
       await _fetchPrayerTimes(position.latitude, position.longitude);
     } catch (e) {
-      setState(() {
-        location = "Gagal mendapatkan lokasi: $e";
-      });
+      if (mounted) {
+        setState(() {
+          location = "Gagal mendapatkan lokasi: $e";
+        });
+      }
     }
   }
 
@@ -88,18 +118,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Placemark placemark = placemarks.first;
         String locality = placemark.locality ?? "Unknown";
         String administrativeArea = placemark.administrativeArea ?? "Unknown";
-        setState(() {
-          location = "$locality, $administrativeArea";
-        });
+        if (mounted) {
+          setState(() {
+            location = "$locality, $administrativeArea";
+          });
+        }
       } else {
-        setState(() {
-          location = "Lokasi tidak ditemukan";
-        });
+        if (mounted) {
+          setState(() {
+            location = "Lokasi tidak ditemukan";
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        location = "Gagal mengambil nama lokasi: $e";
-      });
+      if (mounted) {
+        setState(() {
+          location = "Gagal mengambil nama lokasi: $e";
+        });
+      }
     }
   }
 
@@ -128,18 +164,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           nextPrayer = "Fajr: ${timings['Fajr']} (besok)";
         }
 
-        setState(() {
-          prayerTime = "Sekarang waktu $nextPrayer";
-        });
+        if (mounted) {
+          setState(() {
+            prayerTime = "Sekarang waktu $nextPrayer";
+          });
+        }
       } else {
-        setState(() {
-          prayerTime = "Gagal memuat jadwal sholat";
-        });
+        if (mounted) {
+          setState(() {
+            prayerTime = "Gagal memuat jadwal sholat";
+          });
+        }
       }
     } catch (e) {
-      setState(() {
-        prayerTime = "Error: $e";
-      });
+      if (mounted) {
+        setState(() {
+          prayerTime = "Error: $e";
+        });
+      }
     }
   }
 
@@ -275,68 +317,143 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
+                child: lastRead.isNotEmpty
+                    ? GestureDetector(
+                        onTap: () async {
+                          final surahName = await _quranService.getSurahName(lastRead['surah_number']);
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.reading,
+                            arguments: {
+                              'type': 'surah',
+                              'number': lastRead['surah_number'],
+                              'name': surahName,
+                              'ayah_number': lastRead['ayah_number'],
+                            },
+                          ).then((_) {
+                            _loadLastRead(); // Refresh last read after navigation
+                          });
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4C785).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.menu_book,
+                                  color: Color(0xFFD4C785),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Terakhir dibaca',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                        fontFamily: 'OpenDyslexic',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Q.S. ${lastRead['surah_name']}: ${lastRead['ayah_number']}',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                        fontFamily: 'OpenDyslexic',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.grey[400],
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD4C785).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.menu_book,
-                          color: Color(0xFFD4C785),
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              'Terakhir dibaca',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
-                                fontFamily: 'OpenDyslexic',
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD4C785).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.menu_book,
+                                color: Color(0xFFD4C785).withOpacity(0.5),
+                                size: 24,
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              lastRead,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                                fontFamily: 'OpenDyslexic',
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Terakhir dibaca',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                      fontFamily: 'OpenDyslexic',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Anda belum mulai membaca',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[500],
+                                      fontFamily: 'OpenDyslexic',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.grey[400],
-                        size: 16,
-                      ),
-                    ],
-                  ),
-                ),
               ),
               const SizedBox(height: 16),
               Padding(
@@ -384,7 +501,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         title: 'Al-Quran',
                         color: const Color(0xFFE74C3C),
                         onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.quran);
+                          Navigator.pushNamed(context, AppRoutes.quran).then((_) {
+                            _loadLastRead(); // Refresh last read after returning from Quran
+                          });
                         },
                       ),
                     ),

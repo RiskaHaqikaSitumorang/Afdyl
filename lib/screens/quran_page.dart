@@ -1,4 +1,3 @@
-// lib/screens/quran_page.dart
 import 'package:flutter/material.dart';
 import '../services/quran_service.dart';
 import '../routes/app_routes.dart';
@@ -9,9 +8,10 @@ class QuranPage extends StatefulWidget {
 }
 
 class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixin {
-  bool isSurahSelected = true;
+  int _selectedTab = 0; // 0: Surah, 1: Juz, 2: Bookmarks
   List<dynamic> surahs = [];
   List<dynamic> juzs = [];
+  List<dynamic> bookmarks = [];
   bool isLoading = false;
   String errorMessage = '';
   final QuranService _quranService = QuranService();
@@ -21,6 +21,7 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
     super.initState();
     _loadSurahs();
     _loadJuzs();
+    _loadBookmarks();
   }
 
   Future<void> _loadSurahs() async {
@@ -28,7 +29,6 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
       isLoading = true;
       errorMessage = '';
     });
-
     try {
       final data = await _quranService.fetchSurahs();
       setState(() {
@@ -47,6 +47,19 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
     setState(() {
       juzs = _quranService.generateJuzList();
     });
+  }
+
+  Future<void> _loadBookmarks() async {
+    try {
+      final data = await _quranService.fetchLocalBookmarks();
+      setState(() {
+        bookmarks = data;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Failed to load bookmarks: ${e.toString()}';
+      });
+    }
   }
 
   @override
@@ -96,19 +109,13 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
-                        setState(() {
-                          isSurahSelected = true;
-                        });
-                        if (surahs.isEmpty) {
-                          _loadSurahs();
-                        }
+                        setState(() => _selectedTab = 0);
+                        if (surahs.isEmpty) _loadSurahs();
                       },
                       child: Container(
                         height: 45,
                         decoration: BoxDecoration(
-                          color: isSurahSelected
-                              ? const Color(0xFFD4C785)
-                              : const Color(0xFFE8D4A3),
+                          color: _selectedTab == 0 ? const Color(0xFFD4C785) : const Color(0xFFE8D4A3),
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Center(
@@ -129,24 +136,45 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
-                        setState(() {
-                          isSurahSelected = false;
-                        });
-                        if (juzs.isEmpty) {
-                          _loadJuzs();
-                        }
+                        setState(() => _selectedTab = 1);
+                        if (juzs.isEmpty) _loadJuzs();
                       },
                       child: Container(
                         height: 45,
                         decoration: BoxDecoration(
-                          color: !isSurahSelected
-                              ? const Color(0xFFD4C785)
-                              : const Color(0xFFE8D4A3),
+                          color: _selectedTab == 1 ? const Color(0xFFD4C785) : const Color(0xFFE8D4A3),
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Center(
                           child: Text(
                             'Juz',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                              fontFamily: 'OpenDyslexic',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedTab = 2);
+                        _loadBookmarks();
+                      },
+                      child: Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: _selectedTab == 2 ? const Color(0xFFD4C785) : const Color(0xFFE8D4A3),
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Bookmark',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -231,10 +259,12 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                if (isSurahSelected) {
+                if (_selectedTab == 0) {
                   _loadSurahs();
-                } else {
+                } else if (_selectedTab == 1) {
                   _loadJuzs();
+                } else {
+                  _loadBookmarks();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -251,7 +281,7 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
       );
     }
 
-    final currentList = isSurahSelected ? surahs : juzs;
+    final currentList = _selectedTab == 0 ? surahs : _selectedTab == 1 ? juzs : bookmarks;
 
     if (currentList.isEmpty) {
       return const Center(
@@ -270,10 +300,25 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
   }
 
   Widget _buildListItem(dynamic item, int index) {
-    final title = isSurahSelected
-        ? (item['englishName'] ?? 'Surah ${index + 1}')
-        : (item['name'] ?? 'Juz ${index + 1}');
-    final subtitle = isSurahSelected ? item['name'] : item['arabicName'];
+    String title;
+    String? subtitle;
+
+    if (_selectedTab == 0) {
+      title = item['englishName'] ?? 'Surah ${index + 1}';
+      subtitle = item['name'];
+    } else if (_selectedTab == 1) {
+      title = item['name'] ?? 'Juz ${index + 1}';
+      subtitle = item['arabicName'];
+    } else {
+      final surahNumber = item['surah_number'];
+      final ayahNumber = item['ayah_number'];
+      final surah = surahs.firstWhere(
+        (s) => s['number'] == surahNumber,
+        orElse: () => {'englishName': 'Surah $surahNumber'},
+      );
+      title = '${surah['englishName']}, Ayat $ayahNumber';
+      subtitle = null;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -302,25 +347,71 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                 ),
               )
             : null,
+        trailing: _selectedTab == 2
+            ? IconButton(
+                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                onPressed: () async {
+                  final success = await _quranService.deleteLocalBookmark(item['id']);
+                  if (success) {
+                    setState(() {
+                      bookmarks.removeAt(index);
+                    });
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Gagal menghapus bookmark')),
+                    );
+                  }
+                },
+              )
+            : null,
         onTap: () => _handleItemTap(item, index),
       ),
     );
   }
 
   void _handleItemTap(dynamic item, int index) {
-    final itemName = isSurahSelected
-        ? (item['englishName'] ?? 'Surah ${index + 1}')
-        : (item['name'] ?? 'Juz ${index + 1}');
-    final number = item['number'] ?? (index + 1);
+    String itemName;
+    int number;
 
-    Navigator.pushNamed(
-      context,
-      AppRoutes.reading,
-      arguments: {
-        'type': isSurahSelected ? 'surah' : 'juz',
-        'number': number,
-        'name': itemName,
-      },
-    );
+    if (_selectedTab == 0) {
+      itemName = item['englishName'] ?? 'Surah ${index + 1}';
+      number = item['number'] ?? (index + 1);
+      Navigator.pushNamed(
+        context,
+        AppRoutes.reading,
+        arguments: {
+          'type': 'surah',
+          'number': number,
+          'name': itemName,
+        },
+      );
+    } else if (_selectedTab == 1) {
+      itemName = item['name'] ?? 'Juz ${index + 1}';
+      number = item['number'] ?? (index + 1);
+      Navigator.pushNamed(
+        context,
+        AppRoutes.reading,
+        arguments: {
+          'type': 'juz',
+          'number': number,
+          'name': itemName,
+        },
+      );
+    } else {
+      itemName = surahs.firstWhere(
+        (s) => s['number'] == item['surah_number'],
+        orElse: () => {'englishName': 'Surah ${item['surah_number']}'},
+      )['englishName'];
+      number = item['surah_number'];
+      Navigator.pushNamed(
+        context,
+        AppRoutes.reading,
+        arguments: {
+          'type': 'surah',
+          'number': number,
+          'name': itemName,
+        },
+      );
+    }
   }
 }

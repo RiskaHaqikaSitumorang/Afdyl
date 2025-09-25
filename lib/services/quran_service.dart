@@ -1,9 +1,117 @@
-// lib/services/quran_service.dart
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class QuranService {
   static const String _baseUrl = 'https://api.alquran.cloud/v1';
+
+  // Fetch bookmarks from SharedPreferences
+  Future<List<Map<String, dynamic>>> fetchLocalBookmarks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookmarkJson = prefs.getString('bookmarks') ?? '[]';
+      final bookmarkList = json.decode(bookmarkJson) as List;
+      return bookmarkList.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Error fetching local bookmarks: $e');
+      return [];
+    }
+  }
+
+  // Add a bookmark to SharedPreferences
+  Future<bool> addLocalBookmark(int surahNumber, int ayahNumber) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookmarks = await fetchLocalBookmarks();
+      if (bookmarks.any((b) => b['surah_number'] == surahNumber && b['ayah_number'] == ayahNumber)) {
+        return false; // Bookmark already exists
+      }
+      bookmarks.add({
+        'id': 'local_${surahNumber}_${ayahNumber}_${DateTime.now().millisecondsSinceEpoch}',
+        'surah_number': surahNumber,
+        'ayah_number': ayahNumber,
+      });
+      await prefs.setString('bookmarks', json.encode(bookmarks));
+      print('Bookmark added: Surah $surahNumber, Ayah $ayahNumber');
+      return true;
+    } catch (e) {
+      print('Error adding local bookmark: $e');
+      return false;
+    }
+  }
+
+  // Delete a bookmark from SharedPreferences
+  Future<bool> deleteLocalBookmark(String bookmarkId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bookmarks = await fetchLocalBookmarks();
+      bookmarks.removeWhere((b) => b['id'] == bookmarkId);
+      await prefs.setString('bookmarks', json.encode(bookmarks));
+      print('Bookmark deleted: ID $bookmarkId');
+      return true;
+    } catch (e) {
+      print('Error deleting local bookmark: $e');
+      return false;
+    }
+  }
+
+  // Save last read to SharedPreferences
+  Future<bool> saveLastRead(int surahNumber, int ayahNumber, String surahName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastReadData = {
+        'surah_number': surahNumber,
+        'ayah_number': ayahNumber,
+        'surah_name': surahName,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      final result = await prefs.setString('last_read', json.encode(lastReadData));
+      print('Saved last read: $lastReadData');
+      return result;
+    } catch (e) {
+      print('Error saving last read: $e');
+      return false;
+    }
+  }
+
+  // Fetch last read from SharedPreferences
+  Future<Map<String, dynamic>> fetchLastRead() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastReadJson = prefs.getString('last_read');
+      print('Raw SharedPreferences last_read: $lastReadJson');
+      if (lastReadJson != null) {
+        final data = json.decode(lastReadJson) as Map<String, dynamic>;
+        print('Fetched last read: $data');
+        return data;
+      }
+      print('No last read data found');
+      return {}; // Return empty map if no last read data
+    } catch (e) {
+      print('Error fetching last read: $e');
+      return {};
+    }
+  }
+
+  // Fetch surah name by number for consistency
+  Future<String> getSurahName(int surahNumber) async {
+    try {
+      final surahs = await fetchSurahs();
+      final surah = surahs.firstWhere(
+        (s) => s['number'] == surahNumber,
+        orElse: () => {'englishName': 'Unknown', 'name': 'غير معروف'},
+      );
+      final name = surah['englishName'] as String;
+      print('Fetched surah name for number $surahNumber: $name');
+      return name;
+    } catch (e) {
+      print('Error fetching surah name: $e');
+      return _getStaticSurahs().firstWhere(
+        (s) => s['number'] == surahNumber,
+        orElse: () => {'englishName': 'Unknown'},
+      )['englishName'] as String;
+    }
+  }
 
   Future<List<Map<String, dynamic>>> fetchSurahs() async {
     try {
@@ -11,7 +119,6 @@ class QuranService {
         Uri.parse('$_baseUrl/surah'),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data != null && data['data'] != null) {
@@ -21,28 +128,22 @@ class QuranService {
     } catch (e) {
       print('Error fetching surahs: $e');
     }
-    
     return _getStaticSurahs();
   }
 
   Future<List<Map<String, dynamic>>> fetchAyahs(String type, int number) async {
     try {
-      // Fetch Arabic text and audio (ar.alafasy for word-by-word and audio support)
       final arabicResponse = await http.get(
         Uri.parse('$_baseUrl/$type/$number/ar.alafasy'),
         headers: {'Content-Type': 'application/json'},
       );
-
-      // Fetch Indonesian translation (id.indonesian for Kemenag translation)
       final translationResponse = await http.get(
         Uri.parse('$_baseUrl/$type/$number/id.indonesian'),
         headers: {'Content-Type': 'application/json'},
       );
-
       if (arabicResponse.statusCode == 200 && translationResponse.statusCode == 200) {
         final arabicData = json.decode(arabicResponse.body);
         final translationData = json.decode(translationResponse.body);
-
         if (arabicData != null &&
             arabicData['data'] != null &&
             arabicData['data']['ayahs'] != null &&
@@ -53,14 +154,10 @@ class QuranService {
               List<Map<String, dynamic>>.from(arabicData['data']['ayahs']);
           List<Map<String, dynamic>> translationAyahs =
               List<Map<String, dynamic>>.from(translationData['data']['ayahs']);
-
-          // Combine Arabic, audio, and translation data
           List<Map<String, dynamic>> combinedAyahs = [];
           for (int i = 0; i < arabicAyahs.length; i++) {
             final arabicAyah = arabicAyahs[i];
             final translationAyah = translationAyahs[i];
-
-            // Combine words with translations
             List<Map<String, dynamic>> words = [];
             if (arabicAyah['words'] != null) {
               List<dynamic> arabicWords = arabicAyah['words'];
@@ -71,14 +168,14 @@ class QuranService {
                 });
               }
             }
-
             combinedAyahs.add({
               'number': arabicAyah['number'] ?? i + 1,
+              'numberInSurah': arabicAyah['numberInSurah'] ?? i + 1,
               'text': arabicAyah['text'] ?? '',
               'surah': arabicAyah['surah'] ?? {'number': number},
               'words': words,
               'translation': translationAyah['text'] ?? '',
-              'audio': arabicAyah['audio'] ?? '',  // Audio URL for the ayah
+              'audio': arabicAyah['audio'] ?? '',
             });
           }
           return combinedAyahs;
@@ -87,18 +184,14 @@ class QuranService {
     } catch (e) {
       print('Error fetching ayahs: $e');
     }
-
-    // No static fallback for ayahs, return empty list to trigger error message
     return [];
   }
 
-  // New method to fetch word timings for Mishary Rashid Alafasy from quran-align repo
   Future<List<Map<String, dynamic>>> fetchTimings() async {
     try {
       final response = await http.get(
         Uri.parse('https://raw.githubusercontent.com/cpfair/quran-align/master/data/afasy.json'),
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) {
@@ -111,7 +204,6 @@ class QuranService {
     return [];
   }
 
-  // Method untuk mendapatkan nomor dalam huruf Arab
   String getArabicNumber(int number) {
     const arabicNumbers = {
       1: '١', 2: '٢', 3: '٣', 4: '٤', 5: '٥',
@@ -164,7 +256,6 @@ class QuranService {
     });
   }
 
-  // Method lama tetap ada untuk backward compatibility
   String _getArabicNumber(int number) {
     return getArabicNumber(number);
   }
