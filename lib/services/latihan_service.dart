@@ -78,9 +78,10 @@ class LatihanService {
           }
         },
       );
-      _currentStatus = _speechEnabled
-          ? 'Tekan tombol untuk mulai merekam'
-          : 'Speech recognition not available';
+      _currentStatus =
+          _speechEnabled
+              ? 'Tekan tombol untuk mulai merekam'
+              : 'Speech recognition not available';
       _statusController.add({
         'status': _currentStatus,
         'isListening': _isListening,
@@ -172,9 +173,10 @@ class LatihanService {
     _findArabicTranslation(_lastWords);
     HapticFeedback.mediumImpact();
     _isProcessing = false;
-    _currentStatus = _arabicText.isNotEmpty
-        ? 'Teks ditemukan! Tekan tombol untuk merekam lagi'
-        : 'Teks tidak dikenali. Coba kata lain!';
+    _currentStatus =
+        _arabicText.isNotEmpty
+            ? 'Teks ditemukan! Tekan tombol untuk merekam lagi'
+            : 'Teks tidak dikenali. Coba kata lain!';
     _statusController.add({
       'status': _currentStatus,
       'isListening': _isListening,

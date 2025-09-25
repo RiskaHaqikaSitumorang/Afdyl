@@ -10,17 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase core service
-  firebase_core: ^3.15.2
-  # Authentication (login, register, dsb.)
-  firebase_auth: ^5.3.1
-  # Database Firestore
-  cloud_firestore: ^5.4.4
-  # Firebase Storage (upload/download gambar, file)
-  firebase_storage: ^12.4.10
+  # Supabase services
+  supabase_flutter: ^2.6.0
+  # Environment variables
+  flutter_dotenv: ^5.1.0
 
   # State management
   get: ^4.6.6
+  
+  # Fonts
+  google_fonts: ^6.1.0
 
   # Lokasi & arah
   geolocator: ^12.0.0      # ambil posisi GPS
@@ -38,22 +37,25 @@ dependencies:
   cupertino_icons: ^1.0.2
   speech_to_text: ^7.3.0
 
-  # Machine Learning (pakai TensorFlow Lite)
-  tflite_flutter: ^0.11.0
+  # Machine Learning (temporarily disabled for web compatibility)
+  # tflite_flutter: ^0.10.4
 
 
 flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/Kaaba.png
     - assets/images/muslimah_hijab.png
     - assets/images/ic_checkmark.png
     - assets/images/ic_quran.png
     - assets/images/ic_hijaiyah.png
     - assets/images/ic_sound_wave.png
-    - assets/images/img_masjid_pink.png
+    - assets/images/img_masjid.png
+    - assets/images/ic_point.png
     - assets/images/ic_rank.png
+    - assets/images/ic_tuning.png
     - assets/images/bg_wrapped.png
     - assets/images/pressed.png
     - assets/models/best_model.tflite
@@ -102,3 +104,6 @@ flutter:
         - asset: assets/fonts/Amiri-Regular.ttf
         - asset: assets/fonts/Amiri-Bold.ttf
           weight: 700
+    - family: Maqroo
+      fonts:
+        - asset: assets/fonts/Maqroo-Regular.ttf

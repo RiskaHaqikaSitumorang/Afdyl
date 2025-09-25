@@ -113,8 +113,11 @@ class OnboardingScreen extends StatelessWidget {
                           child: LoadingButton(
                             isLoading: false,
                             text: 'Daftar',
-                            onPressed: () =>
-                                Navigator.pushReplacementNamed(context, AppRoutes.register),
+                            onPressed:
+                                () => Navigator.pushReplacementNamed(
+                                  context,
+                                  AppRoutes.register,
+                                ),
                           ),
                         ),
                         SizedBox(width: 15),
@@ -122,8 +125,11 @@ class OnboardingScreen extends StatelessWidget {
                           child: LoadingButton(
                             isLoading: false,
                             text: 'Masuk',
-                            onPressed: () =>
-                                Navigator.pushReplacementNamed(context, AppRoutes.login),
+                            onPressed:
+                                () => Navigator.pushReplacementNamed(
+                                  context,
+                                  AppRoutes.login,
+                                ),
                           ),
                         ),
                       ],

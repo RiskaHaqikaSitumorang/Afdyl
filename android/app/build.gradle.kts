@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.afdyl"
-    compileSdk = 35
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.afdyl"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"

@@ -119,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     SizedBox(height: 60),
                     Text(
-                      'Assalamualaikum\nSelamat Datang di\nDysQuran',
+                      'Assalamualaikum\nSelamat Datang di\nAFDYL',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 24,

@@ -2,13 +2,15 @@
 import 'package:flutter/material.dart';
 import '../services/quran_service.dart';
 import '../routes/app_routes.dart';
+import '../constants/arabic_text_styles.dart';
 
 class QuranPage extends StatefulWidget {
   @override
   State<QuranPage> createState() => QuranPageState();
 }
 
-class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixin {
+class QuranPageState extends State<QuranPage>
+    with SingleTickerProviderStateMixin {
   bool isSurahSelected = true;
   List<dynamic> surahs = [];
   List<dynamic> juzs = [];
@@ -37,8 +39,10 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
       });
     } catch (e) {
       setState(() {
-        errorMessage = 'Failed to load surahs: ${e.toString()}';
+        errorMessage = 'Gagal memuat data surah: ${e.toString()}';
         isLoading = false;
+        // Clear surahs list to show empty state when error occurs
+        surahs = [];
       });
     }
   }
@@ -47,6 +51,27 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
     setState(() {
       juzs = _quranService.generateJuzList();
     });
+  }
+
+  void _useOfflineMode() {
+    setState(() {
+      errorMessage = '';
+      if (isSurahSelected) {
+        surahs = _quranService.getStaticSurahs();
+      }
+    });
+
+    // Show snackbar to inform user about offline mode
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Mode offline: Menampilkan data terbatas',
+          style: TextStyle(fontFamily: 'OpenDyslexic'),
+        ),
+        backgroundColor: Color(0xFFB8D4B8),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -68,7 +93,11 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black, size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.black,
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -106,9 +135,10 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                       child: Container(
                         height: 45,
                         decoration: BoxDecoration(
-                          color: isSurahSelected
-                              ? const Color(0xFFD4C785)
-                              : const Color(0xFFE8D4A3),
+                          color:
+                              isSurahSelected
+                                  ? const Color(0xFFD4C785)
+                                  : const Color(0xFFE8D4A3),
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Center(
@@ -139,9 +169,10 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
                       child: Container(
                         height: 45,
                         decoration: BoxDecoration(
-                          color: !isSurahSelected
-                              ? const Color(0xFFD4C785)
-                              : const Color(0xFFE8D4A3),
+                          color:
+                              !isSurahSelected
+                                  ? const Color(0xFFD4C785)
+                                  : const Color(0xFFE8D4A3),
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Center(
@@ -192,11 +223,17 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4C785))),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4C785)),
+            ),
             const SizedBox(height: 16),
             const Text(
               'Memuat data...',
-              style: TextStyle(fontSize: 16, color: Colors.black, fontFamily: 'OpenDyslexic'),
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.black,
+                fontFamily: 'OpenDyslexic',
+              ),
             ),
           ],
         ),
@@ -208,10 +245,10 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 60, color: Colors.red),
+            const Icon(Icons.cloud_off, size: 60, color: Colors.red),
             const SizedBox(height: 16),
             const Text(
-              'Terjadi kesalahan',
+              'Tidak dapat terhubung ke server',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -225,26 +262,57 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
               child: Text(
                 errorMessage,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.black87, fontFamily: 'OpenDyslexic'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.black87,
+                  fontFamily: 'OpenDyslexic',
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (isSurahSelected) {
-                  _loadSurahs();
-                } else {
-                  _loadJuzs();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4C785),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              child: const Text(
-                'Coba Lagi',
-                style: TextStyle(color: Colors.black, fontFamily: 'OpenDyslexic'),
-              ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    if (isSurahSelected) {
+                      _loadSurahs();
+                    } else {
+                      _loadJuzs();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD4C785),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text(
+                    'Coba Lagi',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: _useOfflineMode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB8D4B8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text(
+                    'Mode Offline',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -257,7 +325,11 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
       return const Center(
         child: Text(
           'Tidak ada data',
-          style: TextStyle(fontSize: 16, color: Colors.black, fontFamily: 'OpenDyslexic'),
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.black,
+            fontFamily: 'OpenDyslexic',
+          ),
         ),
       );
     }
@@ -265,14 +337,16 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: currentList.length,
-      itemBuilder: (context, index) => _buildListItem(currentList[index], index),
+      itemBuilder:
+          (context, index) => _buildListItem(currentList[index], index),
     );
   }
 
   Widget _buildListItem(dynamic item, int index) {
-    final title = isSurahSelected
-        ? (item['englishName'] ?? 'Surah ${index + 1}')
-        : (item['name'] ?? 'Juz ${index + 1}');
+    final title =
+        isSurahSelected
+            ? (item['englishName'] ?? 'Surah ${index + 1}')
+            : (item['name'] ?? 'Juz ${index + 1}');
     final subtitle = isSurahSelected ? item['name'] : item['arabicName'];
 
     return Container(
@@ -292,25 +366,32 @@ class QuranPageState extends State<QuranPage> with SingleTickerProviderStateMixi
             fontFamily: 'OpenDyslexic',
           ),
         ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black87,
-                  fontFamily: 'OpenDyslexic',
-                ),
-              )
-            : null,
+        subtitle:
+            subtitle != null
+                ? Text(
+                  subtitle,
+                  style:
+                      isSurahSelected
+                          ? ArabicTextStyles.custom(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          )
+                          : ArabicTextStyles.custom(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                )
+                : null,
         onTap: () => _handleItemTap(item, index),
       ),
     );
   }
 
   void _handleItemTap(dynamic item, int index) {
-    final itemName = isSurahSelected
-        ? (item['englishName'] ?? 'Surah ${index + 1}')
-        : (item['name'] ?? 'Juz ${index + 1}');
+    final itemName =
+        isSurahSelected
+            ? (item['englishName'] ?? 'Surah ${index + 1}')
+            : (item['name'] ?? 'Juz ${index + 1}');
     final number = item['number'] ?? (index + 1);
 
     Navigator.pushNamed(
