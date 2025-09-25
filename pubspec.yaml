@@ -15,7 +15,7 @@ dependencies:
   # Environment variables
   flutter_dotenv: ^5.1.0
 
-  # State management
+  # State management (pakai GetX untuk route & controller)
   get: ^4.6.6
   
   # Fonts
@@ -27,23 +27,26 @@ dependencies:
   flutter_compass: ^0.8.0  # sensor kompas (arah kiblat)
   permission_handler: ^11.3.1  # izin akses lokasi, storage, dll.
 
-  # Lainnya
+  # HTTP & UI tambahan
   http: ^1.1.0             # request API
   fluttertoast: ^8.2.8     # pesan popup
   flutter_tts: ^3.8.5      # text-to-speech (bunyi huruf, instruksi)
-  image_picker: ^1.1.2
-  audioplayers: ^6.5.1
-  flutter_lints: ^5.0.0
-  cupertino_icons: ^1.0.2
-  speech_to_text: ^7.3.0
+  image_picker: ^1.1.2     # ambil gambar dari kamera/galeri
+  audioplayers: ^6.5.1     # mainkan audio (huruf hijaiyah, instruksi)
+  flutter_lints: ^5.0.0    # aturan linting (best practice)
+  cupertino_icons: ^1.0.2  # ikon gaya iOS
+  speech_to_text: ^7.3.0   # konversi suara → teks (latihan pengucapan)
+  shared_preferences: ^2.2.2
 
   # Machine Learning (temporarily disabled for web compatibility)
   # tflite_flutter: ^0.10.4
+  # tflite_flutter: ^0.11.0
 
 
 flutter:
   uses-material-design: true
 
+  # Asset yang dipakai dalam aplikasi
   assets:
     - .env
     - assets/images/Kaaba.png
@@ -58,7 +61,10 @@ flutter:
     - assets/images/ic_tuning.png
     - assets/images/bg_wrapped.png
     - assets/images/pressed.png
-    - assets/models/best_model.tflite
+    - assets/images/finish.png
+    # Model
+    - assets/models/best_model.tflite  # model AI untuk pengenalan
+    # Audio huruf hijaiyah
     - assets/audio/ain.m4a
     - assets/audio/alif.m4a
     - assets/audio/ba.m4a
@@ -67,8 +73,8 @@ flutter:
     - assets/audio/dzal.m4a
     - assets/audio/fa.m4a
     - assets/audio/ghain.m4a
-    - assets/audio/ha.m4a
-    - assets/audio/HHa.m4a
+    - assets/audio/ha.m4a    # ha kecil
+    - assets/audio/HHa.m4a   # ha besar
     - assets/audio/jim.m4a
     - assets/audio/kaf.m4a
     - assets/audio/kha.m4a
@@ -87,9 +93,13 @@ flutter:
     - assets/audio/ya.m4a
     - assets/audio/zai.m4a
     - assets/audio/zha.m4a
+  # Audio benar salah
+    - assets/audio/salah.m4a
+    - assets/audio/benar.m4a
 
+  # Font custom yang digunakan di aplikasi
   fonts:
-    - family: OpenDyslexic
+    - family: OpenDyslexic   # font ramah disleksia
       fonts:
         - asset: assets/fonts/OpenDyslexic-Regular.otf
         - asset: assets/fonts/OpenDyslexic-Bold.otf
@@ -99,7 +109,7 @@ flutter:
         - asset: assets/fonts/OpenDyslexic-BoldItalic.otf
           weight: 700
           style: italic
-    - family: Amiri
+    - family: Amiri   # font Arab klasik untuk Al-Qur’an
       fonts:
         - asset: assets/fonts/Amiri-Regular.ttf
         - asset: assets/fonts/Amiri-Bold.ttf

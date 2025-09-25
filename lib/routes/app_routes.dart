@@ -1,3 +1,4 @@
+// lib/routes/app_routes.dart
 import 'package:flutter/material.dart';
 import '../screens/splash_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -11,7 +12,8 @@ import '../screens/wrapped_screen.dart';
 import '../screens/profile_page.dart';
 import '../screens/hijaiyah_tracing_page.dart' as tracing;
 import '../screens/hijaiyah_tracing_detail_page.dart' as detail;
-import '../screens/latihan_kata_page.dart' as latihan; // Pastikan import ini benar
+import '../screens/latihan_kata_page.dart' as latihan;
+import '../screens/hijaiyah_recognition_game.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -27,6 +29,7 @@ class AppRoutes {
   static const String hijaiyahTracing = '/hijaiyah-tracing';
   static const String hijaiyahTracingDetail = '/hijaiyah-tracing-detail';
   static const String latihanKata = '/latihan-kata';
+  static const String hijaiyahRecognition = '/hijaiyah-recognition';
 
   static final routes = <String, WidgetBuilder>{
     splash: (context) => SplashScreen(),
@@ -51,6 +54,7 @@ class AppRoutes {
         name: args?['name'] as String? ?? 'Default',
       );
     },
-    latihanKata: (context) => latihan.LatihanKataPage(), // Pastikan ini mengarah ke class yang benar
+    latihanKata: (context) => latihan.LatihanKataPage(),
+    hijaiyahRecognition: (context) => HijaiyahRecognitionGame(),
   };
 }

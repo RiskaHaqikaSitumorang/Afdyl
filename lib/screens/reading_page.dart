@@ -428,179 +428,185 @@ class _ReadingPageState extends State<ReadingPage> {
         });
         _scrollToAyah(ayahIndex);
       },
-      child: Container(
-        key:
-            _ayahKeys.isNotEmpty && ayahIndex < _ayahKeys.length
-                ? _ayahKeys[ayahIndex]
-                : null,
-        margin: EdgeInsets.only(bottom: ayahSpacing),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color:
-              isActiveAyah
-                  ? AppColors.primary
-                  : AppColors.primary.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(14),
-          border:
-              isActiveAyah
-                  ? Border.all(color: const Color(0xFFD4A574), width: 3)
+      child: Opacity(
+        opacity: isActiveAyah ? 1.0 : 0.6,
+        child: Container(
+          key:
+              _ayahKeys.isNotEmpty && ayahIndex < _ayahKeys.length
+                  ? _ayahKeys[ayahIndex]
                   : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isActiveAyah ? 0.2 : 0.05),
-              blurRadius: isActiveAyah ? 12 : 4,
-              offset: Offset(0, isActiveAyah ? 6 : 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Play button for each ayah (positioned at top-left)
-            Row(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.tertiary.withOpacity(0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  width: 36,
-                  height: 36,
-                  child: IconButton(
-                    iconSize: 20,
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      currentActiveAyah == ayahIndex && autoHighlight
-                          ? Icons.pause
-                          : Icons.play_arrow,
-                      color: AppColors.tertiary,
+          margin: EdgeInsets.only(bottom: ayahSpacing),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color:
+                isActiveAyah
+                    ? AppColors.primary
+                    : AppColors.primary.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                isActiveAyah
+                    ? Border.all(color: const Color(0xFFD4A574), width: 3)
+                    : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isActiveAyah ? 0.2 : 0.05),
+                blurRadius: isActiveAyah ? 12 : 4,
+                offset: Offset(0, isActiveAyah ? 6 : 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Play button for each ayah (positioned at top-left)
+              Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withOpacity(0.4),
+                      shape: BoxShape.circle,
                     ),
-                    onPressed: () => _playAyahAudio(ayahIndex),
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Arabic line(s) with inline words and the number attached to the last word
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child:
-                  words.isNotEmpty
-                      ? RichText(
-                        text: TextSpan(
-                          children: _buildInlineWordSpans(
-                            words,
-                            ayahIndex,
-                            ayahNumber,
-                          ),
-                        ),
-                      )
-                      : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Arabic text with ayah number that wraps responsively
-                          RichText(
-                            textAlign: TextAlign.right,
-                            text: TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: ayah['text'] ?? '',
-                                  style: TextStyle(
-                                    fontSize: fontSize,
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Maqroo',
-                                    height: 1.8,
-                                    wordSpacing: jarakKata,
-                                  ),
-                                ),
-                                const TextSpan(text: ' '), // Small space
-                                WidgetSpan(
-                                  alignment: PlaceholderAlignment.middle,
-                                  child: _buildAyahNumberWidget(
-                                    ayahNumber,
-                                    isActiveAyah,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    width: 36,
+                    height: 36,
+                    child: IconButton(
+                      iconSize: 20,
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        currentActiveAyah == ayahIndex && autoHighlight
+                            ? Icons.pause
+                            : Icons.play_arrow,
+                        color: AppColors.tertiary,
                       ),
-            ),
+                      onPressed: () => _playAyahAudio(ayahIndex),
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+              const SizedBox(height: 8),
 
-            // Play button for each ayah
-            // const SizedBox(height: 12),
-
-            // Translations / meanings (optional)
-            if (showMeaning) const SizedBox(height: 8),
-            if (showMeaning)
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 6,
-                children:
-                    (words.isNotEmpty
-                        ? words.map<Widget>((w) {
-                          final idx = words.indexOf(w);
-                          final isActiveWord =
-                              isActiveAyah && idx == currentActiveWord;
-                          return ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: fontSize * 4.0,
+              // Arabic line(s) with inline words and the number attached to the last word
+              Directionality(
+                textDirection: TextDirection.rtl,
+                child:
+                    words.isNotEmpty
+                        ? RichText(
+                          text: TextSpan(
+                            children: _buildInlineWordSpans(
+                              words,
+                              ayahIndex,
+                              ayahNumber,
                             ),
-                            child: Container(
+                          ),
+                        )
+                        : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Arabic text with ayah number that wraps responsively
+                            RichText(
+                              textAlign: TextAlign.right,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: ayah['text'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: fontSize,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Maqroo',
+                                      height: 1.8,
+                                      wordSpacing: jarakKata,
+                                    ),
+                                  ),
+                                  const TextSpan(text: ' '), // Small space
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.middle,
+                                    child: _buildAyahNumberWidget(
+                                      ayahNumber,
+                                      isActiveAyah,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+              ),
+
+              // Play button for each ayah
+              // const SizedBox(height: 12),
+
+              // Translations / meanings (optional)
+              if (showMeaning) const SizedBox(height: 8),
+              if (showMeaning)
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children:
+                      (words.isNotEmpty
+                          ? words.map<Widget>((w) {
+                            final idx = words.indexOf(w);
+                            final isActiveWord =
+                                isActiveAyah && idx == currentActiveWord;
+                            return ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: fontSize * 4.0,
+                              ),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isActiveWord
+                                          ? Colors.amber.shade100
+                                          : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.black12),
+                                ),
+                                child: Text(
+                                  w['translation'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: (fontSize * 0.5).clamp(
+                                      12.0,
+                                      24.0,
+                                    ),
+                                    fontFamily: 'OpenDyslexic',
+                                    color: Colors.black87,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            );
+                          }).toList()
+                          : [
+                            Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                    isActiveWord
-                                        ? Colors.amber.shade100
-                                        : Colors.white,
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: Colors.black12),
                               ),
                               child: Text(
-                                w['translation'] ?? '',
+                                ayah['translation'] ?? '',
                                 style: TextStyle(
                                   fontSize: (fontSize * 0.5).clamp(12.0, 24.0),
                                   fontFamily: 'OpenDyslexic',
                                   color: Colors.black87,
                                 ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          );
-                        }).toList()
-                        : [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            child: Text(
-                              ayah['translation'] ?? '',
-                              style: TextStyle(
-                                fontSize: (fontSize * 0.5).clamp(12.0, 24.0),
-                                fontFamily: 'OpenDyslexic',
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ]),
-              ),
-          ],
+                          ]),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -1062,7 +1068,7 @@ class _ReadingPageState extends State<ReadingPage> {
         backgroundColor: const Color(0xFFF5F0E8),
         elevation: 0,
         centerTitle: true,
-        toolbarHeight: 90, // Increased height to accommodate the extra spacing
+        toolbarHeight: 80, // Increased height to accommodate the extra spacing
         leading: Container(
           width: 40,
           height: 40,
