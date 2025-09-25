@@ -9,7 +9,8 @@ class LatihanKataPage extends StatefulWidget {
   LatihanKataPageState createState() => LatihanKataPageState();
 }
 
-class LatihanKataPageState extends State<LatihanKataPage> with TickerProviderStateMixin {
+class LatihanKataPageState extends State<LatihanKataPage>
+    with TickerProviderStateMixin {
   final LatihanService _latihanService = LatihanService();
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -80,45 +81,51 @@ class LatihanKataPageState extends State<LatihanKataPage> with TickerProviderSta
             Expanded(
               child: Align(
                 alignment: Alignment.center,
-                child: _arabicText.isNotEmpty && !_isListening
-                    ? Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: TextEditingController(text: _arabicText),
-                            readOnly: true,
-                            textAlign: TextAlign.center,
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                              fontFamily: 'OpenDyslexic',
+                child:
+                    _arabicText.isNotEmpty && !_isListening
+                        ? Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
                             ),
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                              suffixIcon: Icon(
-                                Icons.volume_up,
-                                color: Colors.grey[600],
-                                size: 24,
+                            child: TextField(
+                              controller: TextEditingController(
+                                text: _arabicText,
+                              ),
+                              readOnly: true,
+                              textAlign: TextAlign.center,
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                fontFamily: 'OpenDyslexic',
+                              ),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 15,
+                                ),
+                                suffixIcon: Icon(
+                                  Icons.volume_up,
+                                  color: Colors.grey[600],
+                                  size: 24,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      )
-                    : SizedBox.shrink(),
+                        )
+                        : SizedBox.shrink(),
               ),
             ),
             Align(
@@ -129,7 +136,10 @@ class LatihanKataPageState extends State<LatihanKataPage> with TickerProviderSta
                   isListening: _isListening,
                   isProcessing: _isProcessing,
                   pulseAnimation: _pulseAnimation,
-                  onTap: _isListening ? _latihanService.stopListening : _latihanService.startListening,
+                  onTap:
+                      _isListening
+                          ? _latihanService.stopListening
+                          : _latihanService.startListening,
                 ),
               ),
             ),

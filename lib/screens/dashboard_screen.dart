@@ -1,3 +1,4 @@
+// lib/screens/dashboard_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,6 +11,8 @@ import '../widgets/page_transitions.dart';
 import '../screens/profile_page.dart';
 import '../constants/app_colors.dart';
 import '../constants/arabic_text_styles.dart';
+import '../services/prayer_service.dart';
+import '../models/prayer_times_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -23,6 +26,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String lastRead = "Q.S Al-Fatihah";
   String location = "Mendapatkan lokasi...";
   late Timer _timer;
+
+  // Prayer times state
+  PrayerTimes? prayerTimes;
+  bool isLoadingPrayerTimes = true;
+  final PrayerService _prayerService = PrayerService();
 
   @override
   void initState() {
@@ -38,6 +46,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() {
           _updateTime();
+          // Refresh next-prayer header each minute when data is available
+          _updateNextPrayerMessageFromModel();
         });
       }
     });
@@ -57,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (permission == LocationPermission.denied) {
           setState(() {
             location = "Izin lokasi ditolak";
+            isLoadingPrayerTimes = false; // stop spinner if user denies
           });
           return;
         }
@@ -64,6 +75,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (permission == LocationPermission.deniedForever) {
         setState(() {
           location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
+          isLoadingPrayerTimes = false; // stop spinner if permanently denied
         });
         return;
       }
@@ -73,10 +85,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         timeLimit: Duration(seconds: 10),
       );
       await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
-      await _fetchPrayerTimes(position.latitude, position.longitude);
+      await _fetchTodayPrayerTimes(position.latitude, position.longitude);
     } catch (e) {
       setState(() {
         location = "Gagal mendapatkan lokasi: $e";
+        isLoadingPrayerTimes = false; // ensure spinner stops on error
       });
     }
   }
@@ -109,47 +122,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _fetchPrayerTimes(double latitude, double longitude) async {
+  Future<void> _fetchTodayPrayerTimes(double latitude, double longitude) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          'http://api.aladhan.com/v1/timingsByLatLng?latitude=$latitude&longitude=$longitude&method=2',
-        ),
+      if (mounted) setState(() => isLoadingPrayerTimes = true);
+      final fetchedPrayerTimes = await _prayerService.fetchPrayerTimes(
+        latitude,
+        longitude,
       );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final timings = data['data']['timings'];
-        final now = DateTime.now();
-        final currentHour = now.hour;
-        String nextPrayer = "Tidak ada data";
-
-        if (currentHour < int.parse(timings['Fajr'].split(':')[0])) {
-          nextPrayer = "Fajr: ${timings['Fajr']}";
-        } else if (currentHour < int.parse(timings['Dhuhr'].split(':')[0])) {
-          nextPrayer = "Dhuhr: ${timings['Dhuhr']}";
-        } else if (currentHour < int.parse(timings['Asr'].split(':')[0])) {
-          nextPrayer = "Asr: ${timings['Asr']}";
-        } else if (currentHour < int.parse(timings['Maghrib'].split(':')[0])) {
-          nextPrayer = "Maghrib: ${timings['Maghrib']}";
-        } else if (currentHour < int.parse(timings['Isha'].split(':')[0])) {
-          nextPrayer = "Isha: ${timings['Isha']}";
-        } else {
-          nextPrayer = "Fajr: ${timings['Fajr']} (besok)";
-        }
-
-        setState(() {
-          prayerTime = "Sekarang waktu $nextPrayer";
-        });
-      } else {
-        setState(() {
-          prayerTime = "Gagal memuat jadwal sholat";
-        });
-      }
+      setState(() {
+        prayerTimes = fetchedPrayerTimes;
+        isLoadingPrayerTimes = false;
+      });
+      // Update the header message using the newly loaded model
+      _updateNextPrayerMessageFromModel();
     } catch (e) {
       setState(() {
-        prayerTime = "Error: $e";
+        isLoadingPrayerTimes = false;
       });
+      print('Error fetching prayer times: $e');
     }
+  }
+
+  // --- Helpers to compute the next upcoming prayer name ---
+  static const Map<String, String> _idPrayerNamesLower = {
+    'Fajr': 'subuh',
+    'Dhuhr': 'zuhur',
+    'Asr': 'ashar',
+    'Maghrib': 'maghrib',
+    'Isha': 'isya',
+  };
+
+  DateTime _parseToday(String hhmm) {
+    final clean = hhmm.split(' ').first; // strip timezone if exists
+    final parts = clean.split(':');
+    final now = DateTime.now();
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = (parts.length > 1) ? int.tryParse(parts[1]) ?? 0 : 0;
+    return DateTime(now.year, now.month, now.day, h, m);
+  }
+
+  void _updateNextPrayerMessageFromModel() {
+    if (prayerTimes == null) return;
+    final now = DateTime.now();
+    final order = [
+      MapEntry('Fajr', prayerTimes!.fajr),
+      MapEntry('Dhuhr', prayerTimes!.dhuhr),
+      MapEntry('Asr', prayerTimes!.asr),
+      MapEntry('Maghrib', prayerTimes!.maghrib),
+      MapEntry('Isha', prayerTimes!.isha),
+    ];
+    String? nextNameLower;
+    for (final e in order) {
+      final t = _parseToday(e.value);
+      if (t.isAfter(now)) {
+        nextNameLower = _idPrayerNamesLower[e.key];
+        break;
+      }
+    }
+    nextNameLower ??= _idPrayerNamesLower['Fajr'];
+    setState(() {
+      final capitalizedPrayer =
+          nextNameLower != null
+              ? nextNameLower[0].toUpperCase() + nextNameLower.substring(1)
+              : '-';
+      prayerTime = 'Menuju waktu shalat $capitalizedPrayer';
+    });
   }
 
   @override
@@ -212,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -234,7 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   height: 40,
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Image.asset(
@@ -259,19 +296,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.access_time,
-                                color: Colors.red[600],
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
                               Text(
                                 prayerTime,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: AppColors.blackPrimary.withOpacity(
-                                    0.6,
-                                  ),
+                                  color: AppColors.blackPrimary,
                                   fontFamily: 'OpenDyslexic',
                                 ),
                               ),
@@ -281,11 +310,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Image.asset(
-                                'assets/images/ic_point.png',
-                                width: 24,
-                                height: 24,
-                                fit: BoxFit.contain,
+                              Opacity(
+                                opacity: 0.5,
+                                child: Image.asset(
+                                  'assets/images/ic_point.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -293,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: AppColors.blackPrimary.withOpacity(
-                                    0.6,
+                                    0.5,
                                   ),
                                   fontFamily: 'OpenDyslexic',
                                 ),
@@ -406,13 +438,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             title: 'Tebak Hijaiyah',
                             backgroundColor: AppColors.yellow,
                             onTap: () {
-                              // Navigate to Tebak Hijaiyah page
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Menuju halaman Tebak Hijaiyah',
-                                  ),
-                                ),
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.hijaiyahRecognition,
                               );
                             },
                           ),
@@ -465,6 +493,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Prayer Times Section
+              _buildPrayerTimesSection(),
+
               const SizedBox(height: 30),
             ],
           ),
@@ -792,7 +825,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         width: double.infinity,
         height: 80,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          gradient: LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [AppColors.primary, AppColors.primaryLight],
+          ),
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
@@ -837,6 +874,136 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrayerTimesSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Waktu Shalat',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryLight.withOpacity(0.8),
+                ],
+              ),
+              color: const Color(0xFFE8DCC6),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child:
+                isLoadingPrayerTimes
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
+                        ),
+                      ),
+                    )
+                    : prayerTimes != null
+                    ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children:
+                            prayerTimes!.allPrayers
+                                .map(
+                                  (prayer) => _buildPrayerTimeCard(
+                                    prayer.name,
+                                    prayer.time,
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    )
+                    : const Center(
+                      child: Text(
+                        'Gagal memuat jadwal sholat',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                          fontFamily: 'OpenDyslexic',
+                        ),
+                      ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrayerTimeCard(String prayerName, String time) {
+    return SizedBox(
+      width: 95,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          // color: AppColors.tertiary.withOpacity(0.1),
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              AppColors.tertiary.withOpacity(0.1),
+              AppColors.tertiary.withOpacity(0.3),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.tertiary.withOpacity(0.4),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              time,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                fontFamily: 'OpenDyslexic',
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              prayerName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black,
+                fontFamily: 'OpenDyslexic',
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -137,8 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: 'Nama pengguna atau Email',
                       prefixIcon: Icons.person_outline,
                       errorText: _usernameError,
-                      onChanged: (value) =>
-                          setState(() => _usernameError = null),
+                      onChanged:
+                          (value) => setState(() => _usernameError = null),
                     ),
                     SizedBox(height: 20),
                     CustomTextField(
@@ -147,8 +147,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: Icons.lock_outline,
                       obscureText: !_isPasswordVisible,
                       errorText: _passwordError,
-                      onChanged: (value) =>
-                          setState(() => _passwordError = null),
+                      onChanged:
+                          (value) => setState(() => _passwordError = null),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isPasswordVisible
@@ -157,10 +157,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFF666666),
                           size: 20,
                         ),
-                        onPressed: _isLoading
-                            ? null
-                            : () => setState(() =>
-                                _isPasswordVisible = !_isPasswordVisible),
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () => setState(
+                                  () =>
+                                      _isPasswordVisible = !_isPasswordVisible,
+                                ),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -201,10 +204,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(fontSize: 16),
                       ),
                       GestureDetector(
-                        onTap: _isLoading
-                            ? null
-                            : () => Navigator.pushNamed(
-                                context, AppRoutes.register),
+                        onTap:
+                            _isLoading
+                                ? null
+                                : () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.register,
+                                ),
                         child: Text(
                           'Daftar',
                           style: TextStyle(
