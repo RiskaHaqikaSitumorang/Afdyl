@@ -5,7 +5,7 @@ const List<Map<String, String>> hijaiyahLetters = [
   {'letter': 'ت', 'name': 'ta', 'audio': 'ta.m4a'},
   {'letter': 'ث', 'name': 'tsa', 'audio': 'tsa.m4a'},
   {'letter': 'ج', 'name': 'jim', 'audio': 'jim.m4a'},
-  {'letter': 'ح', 'name': 'ha', 'audio': 'HHa.m4a'}, // Huruf ح (ha besar)
+  {'letter': 'ح', 'name': 'ha', 'audio': 'ha.m4a'}, // Huruf ح (ha besar)
   {'letter': 'خ', 'name': 'kha', 'audio': 'kha.m4a'},
   {'letter': 'د', 'name': 'dal', 'audio': 'dal.m4a'},
   {'letter': 'ذ', 'name': 'dzal', 'audio': 'dzal.m4a'},
@@ -26,6 +26,6 @@ const List<Map<String, String>> hijaiyahLetters = [
   {'letter': 'م', 'name': 'mim', 'audio': 'mim.m4a'},
   {'letter': 'ن', 'name': 'nun', 'audio': 'nun.m4a'},
   {'letter': 'و', 'name': 'waw', 'audio': 'waw.m4a'},
-  {'letter': 'ه', 'name': 'ha2', 'audio': 'ha.m4a'}, // Huruf ه (ha kecil)
+  {'letter': 'ه', 'name': 'ha2', 'audio': 'HHa.m4a'}, // Huruf ه (ha kecil)
   {'letter': 'ي', 'name': 'ya', 'audio': 'ya.m4a'},
 ];

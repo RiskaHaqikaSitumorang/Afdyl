@@ -1,4 +1,3 @@
-// lib/services/game_controller.dart
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,22 +16,34 @@ class GameController {
   Map<int, Offset> cardDragPositions = {};
   Map<int, bool> isDragging = {};
   double validationThreshold = 0.0;
+  Set<String> correctlyAnsweredLetters = {};
+  bool isGameCompleted = false;
+  List<int> availableAudioIndices = List.generate(hijaiyahLetters.length, (index) => index);
 
   GameController(this.audioPlayer) {
     _shuffleGame();
   }
 
   void _shuffleGame() {
+    if (isGameCompleted) return;
     shuffledLetters.shuffle(Random());
-    currentAudioIndex = Random().nextInt(hijaiyahLetters.length);
+    _updateCurrentAudioIndex();
     centerCardIndex = shuffledLetters.length ~/ 2;
     cardDragPositions.clear();
     isDragging.clear();
     showFeedback = false;
   }
 
+  void _updateCurrentAudioIndex() {
+    if (availableAudioIndices.isNotEmpty) {
+      currentAudioIndex = availableAudioIndices[Random().nextInt(availableAudioIndices.length)];
+    } else {
+      isGameCompleted = true;
+    }
+  }
+
   Future<void> playRandomAudio(void Function(VoidCallback) setState, BuildContext context) async {
-    if (isPlayingAudio) return;
+    if (isPlayingAudio || isGameCompleted) return;
 
     setState(() {
       isPlayingAudio = true;
@@ -54,13 +65,17 @@ class GameController {
     }
 
     Future.delayed(Duration(seconds: 2), () {
-      setState(() {
-        isPlayingAudio = false;
-      });
+      if (context.mounted) {
+        setState(() {
+          isPlayingAudio = false;
+        });
+      }
     });
   }
 
   void validateAnswer(int cardIndex, void Function(VoidCallback) setState, BuildContext context) async {
+    if (isGameCompleted) return;
+
     String selectedLetter = shuffledLetters[cardIndex]['name']!;
     String correctLetter = hijaiyahLetters[currentAudioIndex]['name']!;
     bool isCorrect = selectedLetter == correctLetter;
@@ -80,6 +95,12 @@ class GameController {
 
     if (isCorrect) {
       HapticFeedback.heavyImpact();
+      correctlyAnsweredLetters.add(correctLetter);
+      availableAudioIndices.remove(currentAudioIndex);
+      if (correctlyAnsweredLetters.length == hijaiyahLetters.length) {
+        isGameCompleted = true;
+        _showCompletionDialog(context);
+      }
     } else {
       HapticFeedback.vibrate();
     }
@@ -90,17 +111,78 @@ class GameController {
     });
 
     Future.delayed(Duration(seconds: 2), () {
-      if (context.mounted) {
+      if (context.mounted && !isGameCompleted) {
         setState(_generateNewQuestion);
       }
     });
   }
 
   void _generateNewQuestion() {
-    currentAudioIndex = Random().nextInt(hijaiyahLetters.length);
+    _updateCurrentAudioIndex();
     showFeedback = false;
     cardDragPositions.clear();
     isDragging.clear();
+  }
+
+  void _showCompletionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Color(0xFFF5F5DC),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.celebration,
+                color: Color(0xFFFF8C42),
+                size: 60,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Selamat!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontFamily: 'OpenDyslexic',
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Kamu berhasil mengenali semua huruf hijaiyah!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black,
+                  fontFamily: 'OpenDyslexic',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: Text(
+                'Kembali',
+                style: TextStyle(
+                  color: Color(0xFFFF8C42),
+                  fontSize: 16,
+                  fontFamily: 'OpenDyslexic',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void shuffleGame(void Function(VoidCallback) setState) {
@@ -112,4 +194,6 @@ class GameController {
       centerCardIndex = index;
     });
   }
+
+  double get progress => correctlyAnsweredLetters.length / hijaiyahLetters.length;
 }

@@ -1,4 +1,3 @@
-// lib/screens/hijaiyah_recognition_game.dart
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/game_controller.dart';
@@ -155,13 +154,65 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                     ),
                     child: IconButton(
                       icon: Icon(Icons.shuffle, color: Colors.white, size: 20),
-                      onPressed: () => _gameController.shuffleGame(setState),
+                      onPressed: _gameController.isGameCompleted
+                          ? null
+                          : () => _gameController.shuffleGame(setState),
                     ),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 30),
+            SizedBox(height: 20),
+
+            // PROGRESS BAR
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Stack(
+                alignment: Alignment.centerLeft, // Changed to start from left
+                children: [
+                  Container(
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  FractionallySizedBox(
+                    alignment: Alignment.centerLeft, // Align progress to left
+                    widthFactor: _gameController.progress,
+                    child: Container(
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFF8C42),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Center(
+                      child: Text(
+                        '${(_gameController.progress * 28).round()}/28',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'OpenDyslexic',
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: -10,
+                    child: Image.asset(
+                      'assets/images/finish.png',
+                      height: 40,
+                      width: 40,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
 
             // AUDIO BUTTON
             Container(
@@ -200,10 +251,12 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                         scale:
                             _gameController.isPlayingAudio ? _pulseAnimation.value : 1.0,
                         child: GestureDetector(
-                          onTap: () {
-                            _pulseController.forward();
-                            _gameController.playRandomAudio(setState, context);
-                          },
+                          onTap: _gameController.isGameCompleted
+                              ? null
+                              : () {
+                                  _pulseController.forward();
+                                  _gameController.playRandomAudio(setState, context);
+                                },
                           child: Container(
                             width: 120,
                             height: 120,

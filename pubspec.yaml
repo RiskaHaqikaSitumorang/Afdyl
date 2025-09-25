@@ -59,6 +59,7 @@ flutter:
     - assets/images/ic_rank.png
     - assets/images/bg_wrapped.png
     - assets/images/pressed.png
+    - assets/images/finish.png
     # Model
     - assets/models/best_model.tflite  # model AI untuk pengenalan
     # Audio huruf hijaiyah
