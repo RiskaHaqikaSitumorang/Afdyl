@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/quran_service.dart';
-import '../constants/arabic_text_styles.dart';
 import '../constants/app_colors.dart';
 
 class ReadingPage extends StatefulWidget {
@@ -31,6 +30,7 @@ class _ReadingPageState extends State<ReadingPage> {
   bool showMeaning = false;
   double fontSize = 36.0;
   double ayahSpacing = 16.0;
+  double jarakKata = 50.0;
   int currentActiveAyah = 0;
   int currentActiveWord = 0;
   bool autoHighlight = false;
@@ -43,10 +43,8 @@ class _ReadingPageState extends State<ReadingPage> {
   // sizing getters
   double get ayahNumberSize => (fontSize * 0.65).clamp(14.0, 32.0);
   double get wordPadding => (fontSize * 0.35).clamp(6.0, 18.0);
-  double get wordSpacing => (fontSize * 0.4).clamp(
-    10.0,
-    30.0,
-  ); // Increased spacing for better readability
+  double get wordSpacing =>
+      jarakKata.clamp(10.0, 70.0); // Use jarakKata (slider) for word spacing
 
   @override
   void initState() {
@@ -150,10 +148,11 @@ class _ReadingPageState extends State<ReadingPage> {
           if (segment.length >= 4) {
             final startMs = segment[2] as int;
             final endMs = segment[3] as int;
-            final wordIndex = segment[0] as int;
-            -1; // 1-based to 0-based index
+            final idx1Based = segment[0] as int;
+            final wordIndex = idx1Based - 1; // convert to 0-based
             if (ms >= startMs &&
                 ms < endMs &&
+                wordIndex >= 0 &&
                 wordIndex < currentWords.length) {
               setState(() {
                 currentActiveWord = wordIndex;
@@ -312,19 +311,21 @@ class _ReadingPageState extends State<ReadingPage> {
             vertical: wordPadding * 0.28,
           ),
           margin: EdgeInsets.only(
-            left: wordSpacing * 0.5,
+            left: jarakKata * 0.5,
           ), // Slightly larger margin
           decoration: BoxDecoration(
-            color: AppColors.tertiary.withOpacity(0.4),
+            color: AppColors.tertiary,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             getArabicNumber(ayahNumber),
-            style: ArabicTextStyles.custom(
+            style: TextStyle(
               fontSize: ayahNumberSize,
-              color: AppColors.tertiary,
+              color: AppColors.whiteSoft,
               fontWeight: FontWeight.bold,
-            ).copyWith(height: 1.1),
+              fontFamily: 'Maqroo',
+              height: 1.1,
+            ),
           ),
         ),
       ),
@@ -376,7 +377,7 @@ class _ReadingPageState extends State<ReadingPage> {
           horizontal: wordPadding,
           vertical: wordPadding * 0.7,
         ),
-        margin: EdgeInsets.only(right: wordSpacing * 0.15, left: 0),
+        margin: EdgeInsets.only(right: jarakKata * 0.3, left: 0),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(
@@ -399,11 +400,14 @@ class _ReadingPageState extends State<ReadingPage> {
         ),
         child: Text(
           arabicText,
-          style: ArabicTextStyles.custom(
+          style: TextStyle(
             fontSize: fontSize,
             color: textColor,
             fontWeight: FontWeight.bold,
-          ).copyWith(height: 1.4, letterSpacing: 0.4),
+            fontFamily: 'Maqroo',
+            height: 1.4,
+            letterSpacing: 0.4,
+          ),
         ),
       ),
     );
@@ -452,6 +456,33 @@ class _ReadingPageState extends State<ReadingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Play button for each ayah (positioned at top-left)
+            Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.tertiary.withOpacity(0.4),
+                    shape: BoxShape.circle,
+                  ),
+                  width: 36,
+                  height: 36,
+                  child: IconButton(
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      currentActiveAyah == ayahIndex && autoHighlight
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                      color: AppColors.tertiary,
+                    ),
+                    onPressed: () => _playAyahAudio(ayahIndex),
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 8),
+
             // Arabic line(s) with inline words and the number attached to the last word
             Directionality(
               textDirection: TextDirection.rtl,
@@ -469,30 +500,6 @@ class _ReadingPageState extends State<ReadingPage> {
                       : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Play button
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: AppColors.tertiary.withOpacity(0.4),
-                                shape: BoxShape.circle,
-                              ),
-                              width: 40,
-                              height: 40,
-                              child: IconButton(
-                                icon: Icon(
-                                  currentActiveAyah == ayahIndex &&
-                                          autoHighlight
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  color: AppColors.tertiary,
-                                  size: 24,
-                                ),
-                                onPressed: () => _playAyahAudio(ayahIndex),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
                           // Arabic text with ayah number that wraps responsively
                           RichText(
                             textAlign: TextAlign.right,
@@ -500,11 +507,14 @@ class _ReadingPageState extends State<ReadingPage> {
                               children: [
                                 TextSpan(
                                   text: ayah['text'] ?? '',
-                                  style: ArabicTextStyles.custom(
+                                  style: TextStyle(
                                     fontSize: fontSize,
                                     color: Colors.black,
                                     fontWeight: FontWeight.bold,
-                                  ).copyWith(height: 1.8, wordSpacing: 50.0),
+                                    fontFamily: 'Maqroo',
+                                    height: 1.8,
+                                    wordSpacing: jarakKata,
+                                  ),
                                 ),
                                 const TextSpan(text: ' '), // Small space
                                 WidgetSpan(
@@ -525,8 +535,8 @@ class _ReadingPageState extends State<ReadingPage> {
             // const SizedBox(height: 12),
 
             // Translations / meanings (optional)
-            if (showMeaning && isActiveAyah) const SizedBox(height: 8),
-            if (showMeaning && isActiveAyah)
+            if (showMeaning) const SizedBox(height: 8),
+            if (showMeaning)
               Wrap(
                 alignment: WrapAlignment.end,
                 spacing: 8,
@@ -628,7 +638,7 @@ class _ReadingPageState extends State<ReadingPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 wordWidget,
-                SizedBox(width: wordSpacing * 0.3),
+                SizedBox(width: jarakKata * 0.3),
                 _buildAyahNumberWidget(ayahNumber, isActiveAyah),
               ],
             ),
@@ -645,106 +655,398 @@ class _ReadingPageState extends State<ReadingPage> {
   }
 
   void _showSettings() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFFF5F0E8),
-              title: const Text(
-                'Pengaturan',
-                style: TextStyle(fontFamily: 'OpenDyslexic'),
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Ukuran Font',
-                      style: TextStyle(fontFamily: 'OpenDyslexic'),
-                    ),
-                    Slider(
-                      value: fontSize,
-                      min: 16.0,
-                      max: 60.0,
-                      divisions: 22,
-                      label: fontSize.round().toString(),
-                      activeColor: const Color(0xFFD4A574),
-                      onChanged: (value) {
-                        setStateDialog(() => fontSize = value);
-                        setState(() => fontSize = value);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Jarak Antar Ayat',
-                      style: TextStyle(fontFamily: 'OpenDyslexic'),
-                    ),
-                    Slider(
-                      value: ayahSpacing,
-                      min: 6.0,
-                      max: 48.0,
-                      divisions: 21,
-                      label: ayahSpacing.round().toString(),
-                      activeColor: const Color(0xFFD4A574),
-                      onChanged: (value) {
-                        setStateDialog(() => ayahSpacing = value);
-                        setState(() => ayahSpacing = value);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Tampilkan Terjemahan',
-                          style: TextStyle(fontFamily: 'OpenDyslexic'),
-                        ),
-                        Switch(
-                          value: showMeaning,
-                          activeColor: const Color(0xFFD4A574),
-                          onChanged: (value) {
-                            setStateDialog(() => showMeaning = value);
-                            setState(() => showMeaning = value);
-                          },
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Mode Otomatis (Audio)',
-                          style: TextStyle(fontFamily: 'OpenDyslexic'),
-                        ),
-                        Switch(
-                          value: autoHighlight,
-                          activeColor: const Color(0xFFD4A574),
-                          onChanged: (value) {
-                            setStateDialog(() => autoHighlight = value);
-                            setState(() => autoHighlight = value);
-                            if (value) {
-                              _startAutoHighlight();
-                            } else {
-                              _stopAutoHighlight();
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: AppColors.whiteSoft,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Tutup',
-                    style: TextStyle(color: Color(0xFFD4A574)),
+              child: Column(
+                children: [
+                  // Header dengan tombol close
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey, width: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Pengaturan Bacaan',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'OpenDyslexic',
+                            color: Colors.black87,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFFE5E5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Color(0xFFFF6B6B),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+
+                  // Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Ukuran teks Arab
+                          const Text(
+                            'Ukuran teks Arab',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'OpenDyslexic',
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Preview teks Arab
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'بِسْمِ',
+                                style: TextStyle(
+                                  fontSize: fontSize,
+                                  fontFamily: 'Maqroo',
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Slider untuk ukuran font
+                          Row(
+                            children: [
+                              const Text(
+                                'بِسْمِ',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontFamily: 'Maqroo',
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    activeTrackColor: const Color(0xFFFF8A00),
+                                    inactiveTrackColor: Colors.grey.shade300,
+                                    thumbColor: const Color(0xFFB8660A),
+                                    overlayColor: const Color(
+                                      0xFFFF8A00,
+                                    ).withOpacity(0.2),
+                                    thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 12,
+                                    ),
+                                  ),
+                                  child: Slider(
+                                    value: fontSize,
+                                    min: 16.0,
+                                    max: 60.0,
+                                    onChanged: (value) {
+                                      setStateDialog(() => fontSize = value);
+                                      setState(() => fontSize = value);
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const Text(
+                                'بِسْمِ',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontFamily: 'Maqroo',
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Jarak antar kata
+                          const Text(
+                            'Jarak antar kata',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'OpenDyslexic',
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Preview jarak kata
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8F9FA),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'بِسْمِ',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontFamily: 'Maqroo',
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                  SizedBox(width: jarakKata),
+                                  const Text(
+                                    'اللَّهِ',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontFamily: 'Maqroo',
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Slider untuk jarak kata
+                          Row(
+                            children: [
+                              const Text(
+                                'بِسْمِاللَّهِ',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontFamily: 'Maqroo',
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    activeTrackColor: const Color(0xFFFF8A00),
+                                    inactiveTrackColor: Colors.grey.shade300,
+                                    thumbColor: const Color(0xFFB8660A),
+                                    overlayColor: const Color(
+                                      0xFFFF8A00,
+                                    ).withOpacity(0.2),
+                                    thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 12,
+                                    ),
+                                  ),
+                                  child: Slider(
+                                    value: jarakKata,
+                                    min: 10.0,
+                                    max: 70.0,
+                                    onChanged: (value) {
+                                      setStateDialog(() => jarakKata = value);
+                                      setState(() => jarakKata = value);
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const Text(
+                                'بِسْمِ   اللَّهِ',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontFamily: 'Maqroo',
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Pilih fitur tampilan
+                          const Text(
+                            'Pilih fitur tampilan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'OpenDyslexic',
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Fitur toggle buttons
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final newValue = !showMeaning;
+                                    setStateDialog(
+                                      () => showMeaning = newValue,
+                                    );
+                                    setState(() => showMeaning = newValue);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          showMeaning
+                                              ? const Color(0xFFFFE5CC)
+                                              : const Color(0xFFF8F9FA),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            showMeaning
+                                                ? const Color(0xFFFF8A00)
+                                                : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                showMeaning
+                                                    ? const Color(0xFFFF8A00)
+                                                    : Colors.grey.shade400,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.text_fields,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Arti\nbacaan',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontFamily: 'OpenDyslexic',
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    final newValue = !autoHighlight;
+                                    setStateDialog(
+                                      () => autoHighlight = newValue,
+                                    );
+                                    setState(() => autoHighlight = newValue);
+                                    if (newValue) {
+                                      _startAutoHighlight();
+                                    } else {
+                                      _stopAutoHighlight();
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          autoHighlight
+                                              ? const Color(0xFFFFE5CC)
+                                              : const Color(0xFFF8F9FA),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color:
+                                            autoHighlight
+                                                ? const Color(0xFFFF8A00)
+                                                : Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                autoHighlight
+                                                    ? const Color(0xFFFF8A00)
+                                                    : Colors.grey.shade400,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.volume_up,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Suara\notomatis',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontFamily: 'OpenDyslexic',
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         );
@@ -762,6 +1064,8 @@ class _ReadingPageState extends State<ReadingPage> {
         centerTitle: true,
         toolbarHeight: 90, // Increased height to accommodate the extra spacing
         leading: Container(
+          width: 40,
+          height: 40,
           margin: const EdgeInsets.only(top: 8.0, left: 16.0),
           decoration: BoxDecoration(
             color: AppColors.tertiary.withOpacity(0.4),
@@ -769,9 +1073,9 @@ class _ReadingPageState extends State<ReadingPage> {
           ),
           child: IconButton(
             icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.black,
-              size: 20,
+              Icons.chevron_left,
+              color: AppColors.tertiary,
+              size: 25,
             ),
             onPressed: () {
               _stopAutoHighlight();
@@ -794,6 +1098,8 @@ class _ReadingPageState extends State<ReadingPage> {
         actions: [
           Container(
             margin: const EdgeInsets.only(top: 8.0, right: 16.0),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AppColors.tertiary.withOpacity(0.4),
               shape: BoxShape.circle,

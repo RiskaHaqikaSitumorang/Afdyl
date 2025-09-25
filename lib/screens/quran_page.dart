@@ -1,4 +1,5 @@
 // lib/screens/quran_page.dart
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../services/quran_service.dart';
 import '../routes/app_routes.dart';
@@ -88,17 +89,20 @@ class QuranPageState extends State<QuranPage>
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFB8D4B8),
+                    margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withOpacity(0.4),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
                       icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.black,
-                        size: 20,
+                        Icons.chevron_left,
+                        color: AppColors.tertiary,
+                        size: 25,
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
                     ),
                   ),
                   Expanded(
