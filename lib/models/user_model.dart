@@ -1,12 +1,14 @@
 class UserModel {
-  final String uid;
+  final String id; // Changed from uid to id for Supabase
   final String email;
   final String username;
   final Map<String, dynamic> preferences;
   final Map<String, dynamic> progress;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   UserModel({
-    required this.uid,
+    required this.id,
     required this.email,
     required this.username,
     this.preferences = const {
@@ -22,15 +24,25 @@ class UserModel {
       'bookmarks': [],
       'readingTime': 0,
     },
+    this.createdAt,
+    this.updatedAt,
   });
 
-  factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
+  factory UserModel.fromMap(Map<String, dynamic> data) {
     return UserModel(
-      uid: uid,
+      id: data['id'] ?? '',
       email: data['email'] ?? '',
       username: data['username'] ?? '',
       preferences: data['preferences'] ?? {},
       progress: data['progress'] ?? {},
+      createdAt:
+          data['created_at'] != null
+              ? DateTime.parse(data['created_at'])
+              : null,
+      updatedAt:
+          data['updated_at'] != null
+              ? DateTime.parse(data['updated_at'])
+              : null,
     );
   }
 
@@ -40,7 +52,42 @@ class UserModel {
       'username': username,
       'preferences': preferences,
       'progress': progress,
-      'createdAt': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
     };
   }
+
+  // For Supabase insert (with id but without timestamps)
+  Map<String, dynamic> toInsertMap() {
+    return {
+      'id': id,
+      'email': email,
+      'username': username,
+      'preferences': preferences,
+      'progress': progress,
+    };
+  }
+
+  // Method untuk copy dengan perubahan
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? username,
+    Map<String, dynamic>? preferences,
+    Map<String, dynamic>? progress,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      preferences: preferences ?? this.preferences,
+      progress: progress ?? this.progress,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  // Getter untuk backward compatibility
+  String get uid => id;
 }

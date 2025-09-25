@@ -1,37 +1,94 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<UserModel?> register(String email, String username, String password) async {
+  // Get current user
+  User? get currentUser => _supabase.auth.currentUser;
+
+  // Auth state stream
+  Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
+
+  Future<UserModel?> register(
+    String email,
+    String username,
+    String password,
+  ) async {
     try {
-      // Cek username sudah ada atau belum
-      final usernameQuery = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username.toLowerCase())
-          .get();
-      if (usernameQuery.docs.isNotEmpty) {
+      // Check if username already exists
+      final usernameQuery = await _supabase
+          .from('users')
+          .select('username')
+          .eq('username', username.toLowerCase())
+          .limit(1);
+
+      if (usernameQuery.isNotEmpty) {
         throw Exception('Nama pengguna sudah terdaftar');
       }
 
-      // Buat akun Firebase Auth
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      // Create account with Supabase Auth
+      final AuthResponse authResponse = await _supabase.auth.signUp(
         email: email,
         password: password,
       );
 
-      // Simpan data ke Firestore
-      UserModel user = UserModel(
-        uid: userCredential.user!.uid,
+      if (authResponse.user == null) {
+        throw Exception('Gagal membuat akun. Silakan coba lagi.');
+      }
+
+      // Debug: Print user ID to ensure it's not null
+      print('User ID from auth: ${authResponse.user!.id}');
+
+      // Create user profile in users table
+      final UserModel user = UserModel(
+        id: authResponse.user!.id,
         email: email,
         username: username,
       );
-      await _firestore.collection('users').doc(userCredential.user!.uid).set(user.toMap());
+
+      // Debug: Print data yang akan diinsert
+      print('Data to insert: ${user.toInsertMap()}');
+
+      try {
+        await _supabase.from('users').insert(user.toInsertMap());
+        print('User profile created successfully');
+      } catch (e) {
+        print('Error inserting user profile: $e');
+
+        // Check if error is because user already exists in users table
+        if (e.toString().contains('duplicate key') ||
+            e.toString().contains('already exists')) {
+          // User already exists in users table, try to fetch existing user
+          try {
+            final existingUserQuery = await _supabase
+                .from('users')
+                .select()
+                .eq('id', authResponse.user!.id)
+                .limit(1);
+
+            if (existingUserQuery.isNotEmpty) {
+              print('User profile already exists, using existing profile');
+              return UserModel.fromMap(existingUserQuery.first);
+            }
+          } catch (fetchError) {
+            print('Error fetching existing user: $fetchError');
+          }
+        }
+
+        // For other errors, rollback auth user creation
+        try {
+          await _supabase.auth.signOut();
+        } catch (signOutError) {
+          print('Error during signout: $signOutError');
+        }
+
+        throw Exception('Gagal membuat profil pengguna: $e');
+      }
 
       return user;
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -41,37 +98,48 @@ class AuthService {
     try {
       String email;
 
-      // Jika input mengandung '@' → dianggap email
+      // If input contains '@' → treat as email
       if (usernameOrEmail.contains('@')) {
         email = usernameOrEmail;
       } else {
-        // Jika input dianggap username → cari email di Firestore
-        QuerySnapshot query = await _firestore
-            .collection('users')
-            .where('username', isEqualTo: usernameOrEmail.toLowerCase())
-            .get();
+        // If input is username → find email in database
+        final userQuery = await _supabase
+            .from('users')
+            .select('email')
+            .eq('username', usernameOrEmail.toLowerCase())
+            .limit(1);
 
-        if (query.docs.isEmpty) {
+        if (userQuery.isEmpty) {
           throw Exception('Nama pengguna tidak ditemukan');
         }
 
-        email = query.docs.first['email'];
+        email = userQuery.first['email'];
       }
 
-      // Login pakai email + password
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      // Login with email + password
+      final AuthResponse authResponse = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
-      // Ambil data user dari Firestore
-      DocumentSnapshot userDoc =
-          await _firestore.collection('users').doc(userCredential.user!.uid).get();
+      if (authResponse.user == null) {
+        throw Exception('Gagal login. Periksa email dan password Anda.');
+      }
 
-      return UserModel.fromMap(
-        userDoc.data() as Map<String, dynamic>,
-        userCredential.user!.uid,
-      );
+      // Get user profile from users table
+      final userProfileQuery = await _supabase
+          .from('users')
+          .select()
+          .eq('id', authResponse.user!.id)
+          .limit(1);
+
+      if (userProfileQuery.isEmpty) {
+        throw Exception('Profil pengguna tidak ditemukan');
+      }
+
+      return UserModel.fromMap(userProfileQuery.first);
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -79,13 +147,182 @@ class AuthService {
 
   Future<void> forgotPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _supabase.auth.resetPasswordForEmail(email);
+    } on AuthException catch (e) {
+      throw Exception(e.message);
     } catch (e) {
       throw Exception('Gagal mengirim email reset: $e');
     }
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      await _supabase.auth.signOut();
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal logout: $e');
+    }
+  }
+
+  // Update user password
+  Future<void> updatePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    try {
+      // Verify current password by trying to sign in with it
+      final currentUser = _supabase.auth.currentUser;
+      if (currentUser == null || currentUser.email == null) {
+        throw Exception('User tidak ditemukan');
+      }
+
+      // Verify current password
+      final signInResponse = await _supabase.auth.signInWithPassword(
+        email: currentUser.email!,
+        password: currentPassword,
+      );
+
+      if (signInResponse.user == null) {
+        throw Exception('Password lama tidak valid');
+      }
+
+      // Update to new password
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      if (e.message.contains('Invalid login credentials')) {
+        throw Exception('Password lama tidak valid');
+      }
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal mengubah password: $e');
+    }
+  }
+
+  // Get current user profile
+  Future<UserModel?> getCurrentUserProfile() async {
+    try {
+      final user = currentUser;
+      if (user == null) return null;
+
+      final userProfileQuery = await _supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .limit(1);
+
+      if (userProfileQuery.isEmpty) return null;
+
+      return UserModel.fromMap(userProfileQuery.first);
+    } catch (e) {
+      print('Error getting user profile: $e');
+      return null;
+    }
+  }
+
+  // Update user profile
+  Future<UserModel?> updateUserProfile(UserModel user) async {
+    try {
+      await _supabase.from('users').update(user.toMap()).eq('id', user.id);
+
+      return user;
+    } catch (e) {
+      throw Exception('Gagal memperbarui profil: $e');
+    }
+  }
+
+  // Delete user account (admin function - be careful!)
+  Future<void> deleteUserAccount(String userId) async {
+    try {
+      // Delete from users table first
+      await _supabase.from('users').delete().eq('id', userId);
+
+      // Delete from auth.users will cascade automatically due to foreign key
+    } catch (e) {
+      throw Exception('Gagal menghapus akun: $e');
+    }
+  }
+
+  // Get user by ID (admin function)
+  Future<UserModel?> getUserById(String userId) async {
+    try {
+      final userQuery = await _supabase
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .limit(1);
+
+      if (userQuery.isEmpty) return null;
+
+      return UserModel.fromMap(userQuery.first);
+    } catch (e) {
+      print('Error getting user by ID: $e');
+      return null;
+    }
+  }
+
+  // Get all users (admin function)
+  Future<List<UserModel>> getAllUsers({int limit = 50, int offset = 0}) async {
+    try {
+      final usersQuery = await _supabase
+          .from('users')
+          .select()
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return usersQuery.map((user) => UserModel.fromMap(user)).toList();
+    } catch (e) {
+      print('Error getting all users: $e');
+      return [];
+    }
+  }
+
+  // Search users by username or email (admin function)
+  Future<List<UserModel>> searchUsers(String query, {int limit = 20}) async {
+    try {
+      final usersQuery = await _supabase
+          .from('users')
+          .select()
+          .or('username.ilike.%$query%,email.ilike.%$query%')
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      return usersQuery.map((user) => UserModel.fromMap(user)).toList();
+    } catch (e) {
+      print('Error searching users: $e');
+      return [];
+    }
+  }
+
+  // Check if user exists by email
+  Future<bool> userExistsByEmail(String email) async {
+    try {
+      final userQuery = await _supabase
+          .from('users')
+          .select('id')
+          .eq('email', email.toLowerCase())
+          .limit(1);
+
+      return userQuery.isNotEmpty;
+    } catch (e) {
+      print('Error checking user existence: $e');
+      return false;
+    }
+  }
+
+  // Check if username is available
+  Future<bool> isUsernameAvailable(String username) async {
+    try {
+      final userQuery = await _supabase
+          .from('users')
+          .select('id')
+          .eq('username', username.toLowerCase())
+          .limit(1);
+
+      return userQuery.isEmpty;
+    } catch (e) {
+      print('Error checking username availability: $e');
+      return false;
+    }
   }
 }
