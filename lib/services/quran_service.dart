@@ -74,10 +74,33 @@ class QuranService {
             final arabicAyah = arabicAyahs[i];
             final translationAyah = translationAyahs[i];
 
-            // Combine words with translations
+            // Process the text - remove Bismillah from first ayah if present
+            String processedText = arabicAyah['text'] ?? '';
             List<Map<String, dynamic>> words = [];
+
             if (arabicAyah['words'] != null) {
-              List<dynamic> arabicWords = arabicAyah['words'];
+              List<dynamic> arabicWords = List.from(arabicAyah['words']);
+
+              // If this is the first ayah (i == 0), remove first 4 words (except for surah 1 and 9)
+              if (i == 0 && number != 1 && number != 9) {
+                print('Processing first ayah (index $i) for surah $number');
+                print('Original ayah text: $processedText');
+                print('Original words count: ${arabicWords.length}');
+
+                // Simply remove first 4 words
+                if (arabicWords.length >= 4) {
+                  arabicWords = arabicWords.sublist(4);
+                  print('Removed first 4 words');
+                }
+
+                // Remove first 4 words from text as well
+                processedText = _removeFirst4Words(processedText);
+
+                print('After processing text: $processedText');
+                print('After processing words count: ${arabicWords.length}');
+              }
+
+              // Combine words with translations
               for (int j = 0; j < arabicWords.length; j++) {
                 words.add({
                   'text': arabicWords[j]['text'] ?? '',
@@ -87,11 +110,17 @@ class QuranService {
                       '',
                 });
               }
+            } else if (i == 0 && number != 1 && number != 9) {
+              // If there are no words array but this is first ayah, remove first 4 words from text
+              print(
+                'Processing first ayah without words array for surah $number',
+              );
+              processedText = _removeFirst4Words(processedText);
             }
 
             combinedAyahs.add({
               'number': arabicAyah['numberInSurah'] ?? i + 1,
-              'text': arabicAyah['text'] ?? '',
+              'text': processedText,
               'surah': arabicAyah['surah'] ?? {'number': number},
               'words': words,
               'translation': translationAyah['text'] ?? '',
@@ -264,6 +293,25 @@ class QuranService {
       {'number': 9, 'englishName': 'At-Tawbah', 'name': 'التوبة'},
       {'number': 10, 'englishName': 'Yunus', 'name': 'يونس'},
     ];
+  }
+
+  // Helper method to remove first 4 words from text
+  String _removeFirst4Words(String text) {
+    print('Original text for 4-word removal: $text'); // Debug print
+
+    String cleanedText = text.trim();
+    List<String> textWords = cleanedText.split(RegExp(r'\s+'));
+
+    if (textWords.length >= 4) {
+      String removedWords = textWords.take(4).join(' ');
+      cleanedText = textWords.skip(4).join(' ').trim();
+      print('Removed first 4 words: $removedWords');
+      print('Result after removal: $cleanedText');
+    } else {
+      print('Not enough words to remove (${textWords.length} words found)');
+    }
+
+    return cleanedText;
   }
 
   List<Map<String, dynamic>> generateJuzList() {
