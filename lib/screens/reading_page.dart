@@ -3,18 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/quran_service.dart';
+import '../services/last_read_service.dart';
 import '../constants/app_colors.dart';
 
 class ReadingPage extends StatefulWidget {
   final String type;
   final int number;
   final String name;
+  final int? initialAyah;
+  final int? initialWord;
 
   const ReadingPage({
     Key? key,
     required this.type,
     required this.number,
     required this.name,
+    this.initialAyah,
+    this.initialWord,
   }) : super(key: key);
 
   @override
@@ -80,6 +85,22 @@ class _ReadingPageState extends State<ReadingPage> {
         timings = timingData;
         isLoading = false;
         _ayahKeys = List.generate(ayahs.length, (_) => GlobalKey());
+
+        // Set initial position jika ada parameter dari lastRead
+        if (widget.initialAyah != null) {
+          // Cari index ayah berdasarkan nomor ayah
+          final ayahIndex = ayahs.indexWhere(
+            (ayah) => ayah['number'] == widget.initialAyah,
+          );
+          if (ayahIndex != -1) {
+            currentActiveAyah = ayahIndex;
+            currentActiveWord = widget.initialWord ?? 0;
+            // Scroll ke ayah setelah widget build selesai
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToAyah(currentActiveAyah);
+            });
+          }
+        }
       });
     } catch (e) {
       setState(() {
@@ -197,6 +218,7 @@ class _ReadingPageState extends State<ReadingPage> {
     });
 
     _scrollToAyah(ayahIndex);
+    _saveLastReadProgress(); // Simpan progress
     _playCurrentAyahAudio();
   }
 
@@ -207,6 +229,7 @@ class _ReadingPageState extends State<ReadingPage> {
         currentActiveWord = 0;
       });
       _scrollToAyah(currentActiveAyah);
+      _saveLastReadProgress(); // Simpan progress
       if (autoHighlight) {
         _playCurrentAyahAudio();
       }
@@ -222,6 +245,7 @@ class _ReadingPageState extends State<ReadingPage> {
         currentActiveWord = 0;
       });
       _scrollToAyah(currentActiveAyah);
+      _saveLastReadProgress(); // Simpan progress
       if (autoHighlight) {
         _playCurrentAyahAudio();
       }
@@ -278,6 +302,28 @@ class _ReadingPageState extends State<ReadingPage> {
     }
   }
 
+  // Simpan progress terakhir dibaca
+  Future<void> _saveLastReadProgress() async {
+    if (ayahs.isEmpty || currentActiveAyah >= ayahs.length) return;
+
+    final currentAyah = ayahs[currentActiveAyah];
+    final ayahNumber = currentAyah['number'] ?? (currentActiveAyah + 1);
+
+    print(
+      'Saving progress: ${widget.name}, Ayah: $ayahNumber, Word: $currentActiveWord',
+    );
+
+    await LastReadService.saveLastRead(
+      type: widget.type, // 'surah' atau 'juz'
+      surahNumber: widget.number,
+      surahName: widget.name,
+      ayahNumber: ayahNumber,
+      wordNumber: currentActiveWord,
+    );
+
+    print('Progress saved successfully');
+  }
+
   // Convert to Arabic numerals (simple)
   String getArabicNumber(int number) {
     const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -299,6 +345,7 @@ class _ReadingPageState extends State<ReadingPage> {
           currentActiveWord = 0;
         });
         _scrollToAyah(currentActiveAyah);
+        _saveLastReadProgress(); // Simpan progress
         if (autoHighlight) {
           _playCurrentAyahAudio();
         }
@@ -367,6 +414,7 @@ class _ReadingPageState extends State<ReadingPage> {
             currentActiveWord = wordIndex;
           });
           _scrollToAyah(ayahIndex);
+          _saveLastReadProgress(); // Simpan progress
           if (autoHighlight) {
             _playCurrentAyahAudio();
           }
@@ -427,6 +475,7 @@ class _ReadingPageState extends State<ReadingPage> {
           currentActiveWord = 0;
         });
         _scrollToAyah(ayahIndex);
+        _saveLastReadProgress(); // Simpan progress
       },
       child: Opacity(
         opacity: isActiveAyah ? 1.0 : 0.6,
@@ -671,7 +720,7 @@ class _ReadingPageState extends State<ReadingPage> {
             return Container(
               height: MediaQuery.of(context).size.height * 0.75,
               decoration: const BoxDecoration(
-                color: AppColors.whiteSoft,
+                color: AppColors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),

@@ -12,18 +12,22 @@ import '../screens/profile_page.dart';
 import '../constants/app_colors.dart';
 import '../constants/arabic_text_styles.dart';
 import '../services/prayer_service.dart';
+import '../services/last_read_service.dart';
 import '../models/prayer_times_model.dart';
+import '../main.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver, RouteAware {
   String currentTime =
       "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
   String prayerTime = "Memuat jadwal sholat...";
-  String lastRead = "Q.S Al-Fatihah";
+  String lastRead = "Belum ada bacaan";
+  Map<String, dynamic>? lastReadData;
   String location = "Mendapatkan lokasi...";
   late Timer _timer;
 
@@ -35,8 +39,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startTimeUpdate();
     _getCurrentLocation();
+    _loadLastReadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data saat user kembali ke aplikasi/dashboard
+      _loadLastReadData();
+    }
+  }
+
+  @override
+  void didPush() {
+    // Called when the current route has been pushed
+    print('Dashboard: didPush called');
+    _loadLastReadData();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when the top route has been popped off, and this route shows up
+    print('Dashboard: didPopNext called - User returned to dashboard');
+    _loadLastReadData();
   }
 
   void _startTimeUpdate() {
@@ -57,6 +100,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final now = DateTime.now();
     currentTime =
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _loadLastReadData() async {
+    print('Loading last read data...');
+    final data = await LastReadService.getLastRead();
+    print('Last read data: $data');
+    setState(() {
+      lastReadData = data;
+      if (data != null) {
+        lastRead = LastReadService.formatLastReadText(data);
+        print('Formatted last read: $lastRead');
+      } else {
+        lastRead = "Belum ada bacaan";
+        print('No last read data found');
+      }
+    });
+  }
+
+  void _onLastReadTap() {
+    if (lastReadData != null) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.reading,
+        arguments: {
+          'type': lastReadData!['type'],
+          'number': lastReadData!['surahNumber'],
+          'name': lastReadData!['surahName'],
+          'initialAyah': lastReadData!['ayahNumber'],
+          'initialWord': lastReadData!['wordNumber'],
+        },
+      ).then((_) {
+        // Refresh data saat kembali dari reading page
+        print('Returned from reading page, refreshing last read data...');
+        _loadLastReadData();
+      });
+    } else {
+      // Jika belum ada data, buka halaman Quran
+      Navigator.pushNamed(context, AppRoutes.quran).then((_) {
+        // Refresh data saat kembali dari quran page
+        print('Returned from quran page, refreshing last read data...');
+        _loadLastReadData();
+      });
+    }
   }
 
   Future<void> _getCurrentLocation() async {
@@ -187,12 +273,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               : '-';
       prayerTime = 'Menuju waktu shalat $capitalizedPrayer';
     });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
   }
 
   @override
@@ -341,49 +421,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               // Terakhir dibaca section - positioned between header and activities
               Transform.translate(
-                offset: const Offset(0, -32), // Move up to overlap with header
+                offset: const Offset(0, -42), // Move up to overlap with header
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.shadowMedium,
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Image.asset(
-                          'assets/images/ic_quran.png',
-                          width: 30,
-                          height: 30,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Terakhir dibaca',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                  fontFamily: 'OpenDyslexic',
+                  child: GestureDetector(
+                    onTap: _onLastReadTap,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.shadowMedium,
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/ic_quran.png',
+                            width: 24,
+                            height: 24,
+                            // color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Terakhir dibaca',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                    fontFamily: 'OpenDyslexic',
+                                  ),
                                 ),
-                              ),
-                              Flexible(
-                                child: Text(
+                                const SizedBox(height: 4),
+                                Text(
                                   lastRead,
-                                  textAlign: TextAlign.right,
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
@@ -391,114 +471,141 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     fontFamily: 'OpenDyslexic',
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: AppColors.textSecondary,
+                            size: 24,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: Column(
+                  children: [
+                    // Prayer Times Section
+                    _buildPrayerTimesSection(),
+                    const SizedBox(height: 20),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(
+                            'Aktivitas untuk anda',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                              fontFamily: 'OpenDyslexic',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
+                            children: [
+                              // Baris pertama: Al-Quran dan Tebak Hijaiyah
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath: 'assets/images/ic_quran.png',
+                                      title: 'Al-Quran',
+                                      backgroundColor: AppColors.primary,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.quran,
+                                        ).then((_) {
+                                          // Refresh data saat kembali dari quran page
+                                          print(
+                                            'Returned from Al-Quran page, refreshing last read data...',
+                                          );
+                                          _loadLastReadData();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_text_bacaan.png',
+                                      title: 'Tebak Hijaiyah',
+                                      backgroundColor: AppColors.yellow,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.hijaiyahRecognition,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Baris kedua: Jejak Hijaiyah dan Latihan Lafal
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_hijaiyah.png',
+                                      title: 'Jejak Hijaiyah',
+                                      backgroundColor: AppColors.yellow,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.hijaiyahTracing,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_sound_wave.png',
+                                      title: 'Latihan Lafal',
+                                      backgroundColor: AppColors.primary,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.latihanKata,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Baris ketiga: Qibla (full width)
+                              _buildActivityCardLarge(
+                                imagePath: 'assets/images/Kaaba.png',
+                                title: 'Qibla',
+                                backgroundColor: AppColors.primary,
+                                onTap: () {
+                                  Navigator.pushNamed(context, AppRoutes.qibla);
+                                },
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
-              // const SizedBox(height: 10), // Reduced spacing since card overlaps
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Aktivitas untuk anda',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    // Baris pertama: Al-Quran dan Tebak Hijaiyah
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActivityCard(
-                            imagePath: 'assets/images/ic_quran.png',
-                            title: 'Al-Quran',
-                            backgroundColor: AppColors.primary,
-                            onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.quran);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildActivityCard(
-                            imagePath: 'assets/images/ic_text_bacaan.png',
-                            title: 'Tebak Hijaiyah',
-                            backgroundColor: AppColors.yellow,
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.hijaiyahRecognition,
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Baris kedua: Jejak Hijaiyah dan Latihan Lafal
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildActivityCard(
-                            imagePath: 'assets/images/ic_hijaiyah.png',
-                            title: 'Jejak Hijaiyah',
-                            backgroundColor: AppColors.yellow,
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.hijaiyahTracing,
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildActivityCard(
-                            imagePath: 'assets/images/ic_sound_wave.png',
-                            title: 'Latihan Lafal',
-                            backgroundColor: AppColors.primary,
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.latihanKata,
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Baris ketiga: Qibla (full width)
-                    _buildActivityCardLarge(
-                      imagePath: 'assets/images/Kaaba.png',
-                      title: 'Qibla',
-                      backgroundColor: AppColors.primary,
-                      onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.qibla);
-                      },
-                    ),
+
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Prayer Times Section
-              _buildPrayerTimesSection(),
-
-              const SizedBox(height: 30),
             ],
           ),
         ),

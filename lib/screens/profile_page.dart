@@ -312,6 +312,7 @@ class _ProfilePageState extends State<ProfilePage> {
           controller: controller,
           obscureText: obscure,
           enabled: enabled,
+          cursorColor: Colors.black, // Set cursor color to black
           decoration: InputDecoration(
             hintText: hint,
             filled: true,

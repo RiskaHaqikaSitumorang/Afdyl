@@ -102,6 +102,8 @@ class LatihanKataPageState extends State<LatihanKataPage>
                                 text: _arabicText,
                               ),
                               readOnly: true,
+                              cursorColor:
+                                  Colors.black, // Set cursor color to black
                               textAlign: TextAlign.center,
                               textDirection: TextDirection.rtl,
                               style: TextStyle(

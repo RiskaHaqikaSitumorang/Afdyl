@@ -19,6 +19,8 @@ void main() async {
   runApp(const MyApp());
 }
 
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -32,9 +34,14 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.whiteSoft,
         primaryColor: AppColors.primary,
         useMaterial3: true,
+        // Set global cursor color to black
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: Colors.black,
+        ),
       ),
       initialRoute: AppRoutes.splash,
       routes: AppRoutes.routes,
+      navigatorObservers: [routeObserver],
       debugShowCheckedModeBanner: false,
     );
   }

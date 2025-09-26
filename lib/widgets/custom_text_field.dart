@@ -32,13 +32,17 @@ class CustomTextField extends StatelessWidget {
           decoration: BoxDecoration(
             color: Color(0xFFD3D3D3),
             borderRadius: BorderRadius.circular(25),
-            border: errorText != null ? Border.all(color: Colors.red, width: 1.5) : null,
+            border:
+                errorText != null
+                    ? Border.all(color: Colors.red, width: 1.5)
+                    : null,
           ),
           child: TextField(
             controller: controller,
             obscureText: obscureText,
             enabled: enabled,
             keyboardType: keyboardType,
+            cursorColor: Colors.black, // Explicitly set cursor color to black
             style: TextStyle(
               fontFamily: 'OpenDyslexic',
               fontSize: 16,
@@ -58,7 +62,10 @@ class CustomTextField extends StatelessWidget {
               ),
               suffixIcon: suffixIcon,
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ),
             ),
           ),
         ),
