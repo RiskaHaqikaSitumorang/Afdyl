@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class TracingCanvas extends StatelessWidget {
@@ -19,7 +20,7 @@ class TracingCanvas extends StatelessWidget {
       height: 300,
       child: Container(
         decoration: BoxDecoration(
-          color: Color(0xFFD4C785),
+          color: AppColors.secondary,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Stack(

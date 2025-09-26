@@ -3,6 +3,7 @@ import '../widgets/tracing_canvas.dart';
 import '../widgets/control_buttons.dart';
 import '../widgets/mode_toggle.dart';
 import '../services/tracing_service.dart';
+import '../constants/app_colors.dart';
 
 class HijaiyahTracingDetailPage extends StatefulWidget {
   final String letter;
@@ -15,7 +16,8 @@ class HijaiyahTracingDetailPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _HijaiyahTracingDetailPageState createState() => _HijaiyahTracingDetailPageState();
+  _HijaiyahTracingDetailPageState createState() =>
+      _HijaiyahTracingDetailPageState();
 }
 
 class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
@@ -59,13 +61,20 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                       Container(
                         width: 40,
                         height: 40,
+                        margin: const EdgeInsets.only(top: 8.0),
                         decoration: BoxDecoration(
-                          color: Color(0xFFB8D4B8),
+                          color: AppColors.tertiary.withOpacity(0.4),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: Icon(Icons.arrow_back, color: Colors.black, size: 20),
-                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.chevron_left,
+                            color: AppColors.tertiary,
+                            size: 25,
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
                         ),
                       ),
                       Expanded(
@@ -73,7 +82,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                           'Tracing Hijaiyah',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Colors.black,
                             fontFamily: 'OpenDyslexic',
@@ -104,8 +113,10 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                 ),
                 SizedBox(height: 20),
                 ControlButtons(
-                  onPlaySound: () => _tracingService.playSound(widget.pronunciation),
-                  onCheckTracing: () => _tracingService.checkTracing(widget.letter),
+                  onPlaySound:
+                      () => _tracingService.playSound(widget.pronunciation),
+                  onCheckTracing:
+                      () => _tracingService.checkTracing(widget.letter),
                   tracingService: _tracingService,
                 ),
                 SizedBox(height: 30),
@@ -115,7 +126,9 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                       stream: _tracingService.feedbackStream,
                       builder: (context, snapshot) {
                         if (_canvasKey.currentContext != null) {
-                          final RenderBox? renderBox = _canvasKey.currentContext!.findRenderObject() as RenderBox?;
+                          final RenderBox? renderBox =
+                              _canvasKey.currentContext!.findRenderObject()
+                                  as RenderBox?;
                           if (renderBox != null) {
                             _tracingService.setCanvasSize(renderBox.size);
                           }
@@ -125,15 +138,21 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                           key: _canvasKey,
                           behavior: HitTestBehavior.opaque,
                           onPanStart: (details) {
-                            final RenderBox? renderBox = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+                            final RenderBox? renderBox =
+                                _canvasKey.currentContext?.findRenderObject()
+                                    as RenderBox?;
                             if (renderBox == null) return;
-                            final Offset localPosition = renderBox.globalToLocal(details.globalPosition);
+                            final Offset localPosition = renderBox
+                                .globalToLocal(details.globalPosition);
                             _tracingService.startTracing(localPosition);
                           },
                           onPanUpdate: (details) {
-                            final RenderBox? renderBox = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
+                            final RenderBox? renderBox =
+                                _canvasKey.currentContext?.findRenderObject()
+                                    as RenderBox?;
                             if (renderBox == null) return;
-                            final Offset localPosition = renderBox.globalToLocal(details.globalPosition);
+                            final Offset localPosition = renderBox
+                                .globalToLocal(details.globalPosition);
                             _tracingService.updateTracing(localPosition);
                             setState(() {});
                           },
@@ -151,7 +170,10 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                   ),
                 ),
                 SizedBox(height: 20),
-                ModeToggle(isPracticeMode: isPracticeMode, onToggle: _toggleMode),
+                ModeToggle(
+                  isPracticeMode: isPracticeMode,
+                  onToggle: _toggleMode,
+                ),
                 SizedBox(height: 20),
                 if (_tracingService.hasStrokes)
                   Padding(
@@ -163,11 +185,18 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                         onPressed: _tracingService.clearTracing,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[300],
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
                         ),
                         child: Text(
                           'Hapus Semua',
-                          style: TextStyle(fontSize: 16, color: Colors.black, fontFamily: 'OpenDyslexic', fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                            fontFamily: 'OpenDyslexic',
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -175,7 +204,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                 SizedBox(height: 20),
               ],
             ),
-            
+
             // Feedback overlay - positioned separately to avoid UI conflicts
             StreamBuilder<Map<String, dynamic>>(
               stream: _tracingService.feedbackStream,
@@ -183,7 +212,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                 if (!_tracingService.showFeedback) {
                   return SizedBox.shrink();
                 }
-                
+
                 return Positioned.fill(
                   child: Container(
                     color: Colors.black26, // Semi-transparent backdrop
@@ -214,20 +243,28 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: _tracingService.isCorrect ? 
-                                  Color(0xFF4CAF50).withOpacity(0.1) : 
-                                  Color(0xFFF44336).withOpacity(0.1),
+                                color:
+                                    _tracingService.isCorrect
+                                        ? Color(0xFF4CAF50).withOpacity(0.1)
+                                        : Color(0xFFF44336).withOpacity(0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                _tracingService.isCorrect ? Icons.check_circle : Icons.error,
+                                _tracingService.isCorrect
+                                    ? Icons.check_circle
+                                    : Icons.error,
                                 size: 50,
-                                color: _tracingService.isCorrect ? Color(0xFF4CAF50) : Color(0xFFF44336),
+                                color:
+                                    _tracingService.isCorrect
+                                        ? Color(0xFF4CAF50)
+                                        : Color(0xFFF44336),
                               ),
                             ),
                             SizedBox(height: 20),
                             Text(
-                              _tracingService.isCorrect ? 'Benar!' : 'Coba Lagi!',
+                              _tracingService.isCorrect
+                                  ? 'Benar!'
+                                  : 'Coba Lagi!',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -235,9 +272,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                                 fontFamily: 'OpenDyslexic',
                               ),
                             ),
-                            if (!_tracingService.isCorrect) ...[
-
-                            ],
+                            if (!_tracingService.isCorrect) ...[],
                           ],
                         ),
                       ),

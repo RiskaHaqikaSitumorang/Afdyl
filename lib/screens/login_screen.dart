@@ -195,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: 'Masuk',
                     onPressed: _handleLogin,
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
