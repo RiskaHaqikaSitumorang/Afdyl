@@ -186,7 +186,7 @@ class QuranPageState extends State<QuranPage>
                   Container(
                     width: 40,
                     height: 40,
-                    margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+                    margin: const EdgeInsets.only(top: 8.0),
                     decoration: BoxDecoration(
                       color: AppColors.tertiary.withOpacity(0.4),
                       shape: BoxShape.circle,
@@ -240,7 +240,7 @@ class QuranPageState extends State<QuranPage>
                         child: Container(
                           height: 45,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD4C785),
+                            color: AppColors.secondary,
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: Center(
@@ -275,7 +275,7 @@ class QuranPageState extends State<QuranPage>
                         child: Container(
                           height: 45,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFD4C785),
+                            color: AppColors.secondary,
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: Center(
