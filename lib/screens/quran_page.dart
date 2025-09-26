@@ -176,7 +176,6 @@ class QuranPageState extends State<QuranPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
       body: SafeArea(
         child: Column(
           children: [
