@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class LoadingButton extends StatelessWidget {
@@ -15,13 +16,13 @@ class LoadingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 60,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isLoading ? Colors.grey[400] : Color(0xFFD4C785),
+          backgroundColor: isLoading ? Colors.grey[400] : AppColors.secondary,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),

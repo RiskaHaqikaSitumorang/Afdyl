@@ -178,7 +178,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     text: 'Daftar',
                     onPressed: _handleRegister,
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
