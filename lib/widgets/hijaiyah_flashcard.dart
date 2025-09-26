@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../models/hijaiyah_model.dart';
 
@@ -36,9 +37,8 @@ class HijaiyahFlashcard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.secondary,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Color(0xFFD3D3D3), width: 2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
