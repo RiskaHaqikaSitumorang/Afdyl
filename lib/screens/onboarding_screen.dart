@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../widgets/loading_button.dart';
 import '../routes/app_routes.dart';
@@ -18,37 +19,49 @@ class OnboardingScreen extends StatelessWidget {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
-                    color: Color(0xFFE8C5C5),
+                    color: AppColors.primary,
                   ),
                   child: Stack(
+                    clipBehavior:
+                        Clip.none, // Mengizinkan elemen keluar dari batas
                     children: [
                       Positioned(
                         top: 0,
-                        left: 0,
-                        child: Container(
-                          width: 120,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Color(0xFF8CC8A8),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20),
-                              bottomRight: Radius.circular(80),
-                            ),
+                        left: -4,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: Image.asset(
+                          'assets/images/Star 2.png',
+                          width: 240,
+                          height: 240,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                            Icons.star,
+                            size: 50,
+                            color: Colors.grey,
+                            );
+                          },
                           ),
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 100,
-                          height: 150,
-                          decoration: BoxDecoration(
-                            color: Color(0xFF8CC8A8),
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(80),
-                              bottomRight: Radius.circular(20),
-                            ),
+                        Positioned(
+                        bottom: 0, 
+                        right: -4, 
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: Image.asset(
+                          'assets/images/Star 3.png',
+                          width: 240,
+                          height: 240,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                            Icons.star,
+                            size: 50,
+                            color: Colors.grey,
+                            );
+                          },
                           ),
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 
@@ -19,31 +20,42 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFD4B5B5),
+      // backgroundColor: AppColors.primary,
       body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'AFDYL',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D5016),
-                  letterSpacing: 8.0,
-                ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'AFDYL',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.softBlack,
+                      letterSpacing: 8.0,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Quran untuk Dyslexia',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: AppColors.softBlack,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
-              Text(
-                'Quran untuk Dyslexia',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF2D5016),
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
