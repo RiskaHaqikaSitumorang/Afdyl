@@ -58,7 +58,9 @@ flutter:
     - assets/images/img_masjid.png
     - assets/images/ic_point.png
     - assets/images/ic_rank.png
+    - assets/images/ic_shuffle.png
     - assets/images/ic_tuning.png
+    - assets/images/ic_playbutton.png
     - assets/images/bg_wrapped.png
     - assets/images/pressed.png
     - assets/images/finish.png
