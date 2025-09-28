@@ -94,34 +94,46 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                   ),
                 ),
                 SizedBox(height: 20),
-                Text(
-                  '(${widget.pronunciation})',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  widget.letter,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                ModeToggle(
+                  isPracticeMode: isPracticeMode,
+                  onToggle: _toggleMode,
                 ),
                 SizedBox(height: 20),
-                ControlButtons(
-                  onPlaySound:
-                      () => _tracingService.playSound(widget.pronunciation),
-                  onCheckTracing:
-                      () => _tracingService.checkTracing(widget.letter),
-                  tracingService: _tracingService,
-                ),
+                if (_tracingService.hasStrokes)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: ElevatedButton(
+                        onPressed: _tracingService.clearTracing,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: Text(
+                          'Hapus Semua',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                            fontFamily: 'OpenDyslexic',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 SizedBox(height: 30),
-                Expanded(
-                  child: Center(
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.0),
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    height:
+                        MediaQuery.of(
+                          context,
+                        ).size.width, // Tinggi sama dengan lebar (square)
                     child: StreamBuilder<Map<String, dynamic>>(
                       stream: _tracingService.feedbackStream,
                       builder: (context, snapshot) {
@@ -170,37 +182,32 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                   ),
                 ),
                 SizedBox(height: 20),
-                ModeToggle(
-                  isPracticeMode: isPracticeMode,
-                  onToggle: _toggleMode,
-                ),
-                SizedBox(height: 20),
-                if (_tracingService.hasStrokes)
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 40),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: ElevatedButton(
-                        onPressed: _tracingService.clearTracing,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[300],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: Text(
-                          'Hapus Semua',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.black,
-                            fontFamily: 'OpenDyslexic',
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
+                Text(
+                  '(${widget.pronunciation})',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.black,
+                    fontFamily: 'OpenDyslexic',
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+                Text(
+                  widget.letter,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Expanded(
+                  child: ControlButtons(
+                    onPlaySound:
+                        () => _tracingService.playSound(widget.pronunciation),
+                    onCheckTracing:
+                        () => _tracingService.checkTracing(widget.letter),
+                    tracingService: _tracingService,
+                  ),
+                ),
                 SizedBox(height: 20),
               ],
             ),

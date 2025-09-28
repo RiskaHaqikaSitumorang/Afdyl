@@ -1,4 +1,5 @@
 // lib/widgets/flashcard_widget.dart
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../services/game_controller.dart';
 
@@ -35,8 +36,6 @@ class FlashcardWidget extends StatelessWidget {
 
     // Enhanced visual effects for dragging
     double dragScale = 1.0;
-    double dragElevation =
-        (isDragging && !disableDragTransform) ? 20.0 : (isCenter ? 4.0 : 0.0);
 
     return Transform.translate(
       offset: dragPosition,
@@ -49,56 +48,57 @@ class FlashcardWidget extends StatelessWidget {
             onPanUpdate: isCenter ? onPanUpdate : null,
             onPanEnd: isCenter ? onPanEnd : null,
             child: Material(
-              elevation: dragElevation,
-              shadowColor: Colors.black.withOpacity(0.4),
               borderRadius: BorderRadius.circular(15),
               color: Colors.transparent,
-              child: Container(
-                width: cardSize,
-                height: cardSize, // Consistent square size
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEDD1B0),
-                  borderRadius: BorderRadius.circular(15),
-                  border:
-                      (isDragging && !disableDragTransform)
-                          ? Border.all(
-                            color: Colors.blue.withOpacity(0.6),
-                            width: 2,
-                          )
-                          : (controller.showFeedback && isCenter
-                              ? Border.all(
-                                color: controller.feedbackColor,
-                                width: 3,
-                              )
-                              : null),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Huruf Hijaiyah dengan font Maqroo
-                    Text(
-                      controller.shuffledLetters[index]['letter']!,
-                      style: TextStyle(
-                        fontSize: isCenter ? 50 : 40,
-                        fontFamily: 'Maqroo', // Font Maqroo untuk hijaiyah
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w400,
+              child: Padding(
+                padding: EdgeInsetsGeometry.only(bottom: 20),
+                child: Container(
+                  width: cardSize,
+                  height: cardSize, // Consistent square size
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(15),
+                    border:
+                        (isDragging && !disableDragTransform)
+                            ? Border.all(
+                              color: Colors.blue.withOpacity(0.6),
+                              width: 2,
+                            )
+                            : (controller.showFeedback && isCenter
+                                ? Border.all(
+                                  color: controller.feedbackColor,
+                                  width: 3,
+                                )
+                                : null),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Huruf Hijaiyah dengan font Maqroo
+                      Text(
+                        controller.shuffledLetters[index]['letter']!,
+                        style: TextStyle(
+                          fontSize: isCenter ? 50 : 40,
+                          fontFamily: 'Maqroo', // Font Maqroo untuk hijaiyah
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        semanticsLabel:
+                            'Huruf ${controller.shuffledLetters[index]['name']!}',
                       ),
-                      semanticsLabel:
-                          'Huruf ${controller.shuffledLetters[index]['name']!}',
-                    ),
-                    SizedBox(height: 8),
-                    // Nama huruf dalam kurung
-                    Text(
-                      '(${controller.shuffledLetters[index]['name']!})',
-                      style: TextStyle(
-                        fontSize: isCenter ? 14 : 12,
-                        fontFamily: 'OpenDyslexic',
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
+                      SizedBox(height: 8),
+                      // Nama huruf dalam kurung
+                      Text(
+                        '(${controller.shuffledLetters[index]['name']!})',
+                        style: TextStyle(
+                          fontSize: isCenter ? 14 : 12,
+                          fontFamily: 'OpenDyslexic',
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -390,68 +390,79 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                                     context,
                                   );
                                 },
-                        child: AnimatedContainer(
-                          duration: Duration(milliseconds: 300),
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color:
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedContainer(
+                              duration: Duration(milliseconds: 300),
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color:
+                                    _gameController.isPlayingAudio
+                                        ? (_isCardInDropZone()
+                                            ? Colors.green.withOpacity(0.5)
+                                            : AppColors.tertiary.withOpacity(
+                                              0.5,
+                                            ))
+                                        : (_isCardInDropZone()
+                                            ? Colors.green.withOpacity(0.3)
+                                            : AppColors.tertiary.withOpacity(
+                                              0.3,
+                                            )),
+                                shape: BoxShape.circle,
+                                border:
+                                    _gameController.isPlayingAudio
+                                        ? Border.all(
+                                          color:
+                                              _isCardInDropZone()
+                                                  ? Colors.green
+                                                  : AppColors.tertiary,
+                                          width: 3,
+                                        )
+                                        : null,
+                              ),
+                              child: Icon(
                                 _gameController.isPlayingAudio
-                                    ? (_isCardInDropZone()
-                                        ? Colors.green.withOpacity(0.5)
-                                        : AppColors.tertiary.withOpacity(0.5))
-                                    : (_isCardInDropZone()
-                                        ? Colors.green.withOpacity(0.3)
-                                        : AppColors.tertiary.withOpacity(0.3)),
-                            shape: BoxShape.circle,
-                            border:
-                                _gameController.isPlayingAudio
-                                    ? Border.all(
-                                        color:
-                                            _isCardInDropZone()
-                                                ? Colors.green
-                                                : AppColors.tertiary,
-                                        width: 3,
-                                      )
-                                    : null,
-                          ),
-                          child: Icon(
-                            _gameController.isPlayingAudio
-                                ? Icons.volume_up
-                                : Icons.play_arrow,
-                            size: _gameController.isPlayingAudio ? 52 : 48,
-                            color:
-                                _isCardInDropZone()
-                                    ? Colors.green
-                                    : AppColors.tertiary,
-                          ),
+                                    ? Icons.volume_up
+                                    : Icons.play_arrow,
+                                size: _gameController.isPlayingAudio ? 52 : 48,
+                                color:
+                                    _isCardInDropZone()
+                                        ? Colors.green
+                                        : AppColors.tertiary,
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              _gameController.isPlayingAudio
+                                  ? 'Sedang memutar audio...'
+                                  : (_draggedCardIndex != null &&
+                                          _isCardInDropZone()
+                                      ? 'Lepaskan kartu di sini!'
+                                      : 'Tap untuk dengar, lalu drag kartu hijaiyah ke area ini'),
+                              style: TextStyle(
+                                fontSize: 16,
+                                color:
+                                    _gameController.isPlayingAudio
+                                        ? Colors.orange
+                                        : (_draggedCardIndex != null &&
+                                                _isCardInDropZone()
+                                            ? Colors.green
+                                            : Color(0xFFFF8C42)),
+                                fontFamily: 'OpenDyslexic',
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                SizedBox(height: 16),
-                Text(
-                  _gameController.isPlayingAudio
-                      ? 'Sedang memutar audio...'
-                      : (_draggedCardIndex != null && _isCardInDropZone()
-                          ? 'Lepaskan kartu di sini!'
-                          : 'Tap untuk dengar, lalu drag kartu ke atas'),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color:
-                        _gameController.isPlayingAudio
-                            ? Colors.orange
-                            : (_draggedCardIndex != null && _isCardInDropZone()
-                                ? Colors.green
-                                : Color(0xFFFF8C42)),
-                    fontFamily: 'OpenDyslexic',
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
+                SizedBox(height: 40),
                 // FEEDBACK
                 if (_gameController.showFeedback)
                   AnimatedBuilder(
@@ -490,7 +501,7 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                       Align(
                         alignment: Alignment.bottomCenter,
                         child: Container(
-                          height: cardSize,
+                          height: cardSize + 10,
                           child: PageView.builder(
                             controller: _pageController,
                             physics:
@@ -528,24 +539,22 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
     bool isBeingDragged = _draggedCardIndex == index;
 
     return Container(
-      child: Container(
-        width: cardSize,
-        height: cardSize, // Ensure square shape
-        color: Colors.transparent,
-        child: Opacity(
-          opacity:
-              isBeingDragged
-                  ? 0.3
-                  : 1.0, // Make original card semi-transparent when dragging
-          child: FlashcardWidget(
-            index: index,
-            controller: _gameController,
-            onPanStart: () => _onPanStart(index),
-            onPanUpdate: (details) => _onPanUpdate(index, details),
-            onPanEnd: (details) => _onPanEnd(index, details),
-            // Disable drag position for the original card when dragging
-            disableDragTransform: isBeingDragged,
-          ),
+      width: cardSize,
+      height: cardSize, // Ensure square shape
+      color: Colors.transparent,
+      child: Opacity(
+        opacity:
+            isBeingDragged
+                ? 0.3
+                : 1.0, // Make original card semi-transparent when dragging
+        child: FlashcardWidget(
+          index: index,
+          controller: _gameController,
+          onPanStart: () => _onPanStart(index),
+          onPanUpdate: (details) => _onPanUpdate(index, details),
+          onPanEnd: (details) => _onPanEnd(index, details),
+          // Disable drag position for the original card when dragging
+          disableDragTransform: isBeingDragged,
         ),
       ),
     );

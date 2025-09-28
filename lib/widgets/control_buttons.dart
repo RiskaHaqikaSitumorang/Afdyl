@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Tambah untuk HapticFeedback
 import '../services/tracing_service.dart';
@@ -43,8 +44,8 @@ class _ControlButtonsState extends State<ControlButtons> {
   }
 
   void _handleCheckPress() {
-    if (!isProcessing) {
-      HapticFeedback.mediumImpact(); // Pastikan import ada
+    if (!isProcessing && widget.tracingService.hasStrokes) {
+      HapticFeedback.mediumImpact();
       widget.onCheckTracing();
     }
   }
@@ -53,91 +54,106 @@ class _ControlButtonsState extends State<ControlButtons> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final horizontalPadding = screenWidth > 400 ? 40.0 : 20.0;
+    final hasTracing = widget.tracingService.hasStrokes;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          // Play Sound Button
           GestureDetector(
             onTap: _handlePlayPress,
-            child: Semantics(
-              label: 'Play pronunciation sound',
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Color(0xFFB8D4B8),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.1), // Ganti withOpacity
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  icon: Icon(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.tertiary.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
                     Icons.volume_up,
-                    color: Colors.black,
+                    color: AppColors.tertiary,
                     size: 28,
                   ),
-                  onPressed: null,
-                  tooltip: 'Play Sound',
                 ),
-              ),
+                SizedBox(height: 8),
+                Text(
+                  'Dengar',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.tertiary,
+                    fontFamily: 'OpenDyslexic',
+                  ),
+                ),
+              ],
             ),
           ),
-          GestureDetector(
-            onTap: _handleCheckPress,
-            child: Semantics(
-              label: isProcessing
-                  ? 'Processing tracing'
-                  : showFeedback
-                      ? (isCorrect ? 'Tracing correct' : 'Tracing incorrect')
-                      : 'Check tracing',
-              child: Stack(
-                alignment: Alignment.center,
+
+          // Check Tracing Button
+          Opacity(
+            opacity: hasTracing ? 1.0 : 0.5,
+            child: GestureDetector(
+              onTap: hasTracing ? _handleCheckPress : null,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: showFeedback
-                          ? (isCorrect ? Colors.green : Colors.red)
-                          : Color(0xFFB8D4B8),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.1), // Ganti withOpacity
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      color:
+                          showFeedback
+                              ? (isCorrect ? Colors.green : Colors.red)
+                              : (hasTracing
+                                  ? Color(0xFFB8D4B8).withOpacity(0.6)
+                                  : Colors.grey[300]),
+                      shape: BoxShape.circle,                      
+                    ),
+                    child:
+                        isProcessing
+                            ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.black,
+                                ),
+                              ),
+                            )
+                            : Icon(
+                              showFeedback
+                                  ? (isCorrect ? Icons.check : Icons.error)
+                                  : Icons.check_circle,
+                              color:
+                                  hasTracing ? Color.fromARGB(255, 71, 108, 71) : Colors.grey[600],
+                              size: 28,
+                            ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    isProcessing
+                        ? 'Cek...'
+                        : (showFeedback
+                            ? (isCorrect ? 'Benar!' : 'Salah!')
+                            : 'Periksa'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          hasTracing
+                              ? (showFeedback
+                                  ? (isCorrect ? Color.fromARGB(255, 71, 108, 71) : Colors.red)
+                                  : Color.fromARGB(255, 71, 108, 71))
+                              : Colors.grey[600],
+                      fontFamily: 'OpenDyslexic',
                     ),
                   ),
-                  if (isProcessing)
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                      ),
-                    )
-                  else
-                    IconButton(
-                      icon: Icon(
-                        showFeedback
-                            ? (isCorrect ? Icons.check : Icons.error)
-                            : Icons.check_circle,
-                        color: Colors.black,
-                        size: 28,
-                      ),
-                      onPressed: null,
-                      tooltip: isProcessing ? 'Processing...' : 'Check Tracing',
-                    ),
                 ],
               ),
             ),
