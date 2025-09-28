@@ -492,6 +492,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const SizedBox(height: 16),
 
                 if (_isEditing) ...[
+                  SizedBox(height: 20),
                   const Text(
                     "Ganti password (opsional)",
                     style: TextStyle(
@@ -525,17 +526,19 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 24),
                 ],
 
+                // Spacer untuk mendorong button ke bawah
+                Expanded(child: SizedBox()),
+
+                // Button di paling bawah dengan tinggi 20
                 SizedBox(
                   width: double.infinity,
+                  height: 60,
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : _toggleEdit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           _isSaving ? Colors.grey : const Color(0xFFE6D679),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
-                      ),
+                      padding: EdgeInsets.zero, // Hilangkan padding default
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -546,16 +549,16 @@ class _ProfilePageState extends State<ProfilePage> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 SizedBox(
-                                  width: 20,
-                                  height: 20,
+                                  width: 12,
+                                  height: 12,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                                    strokeWidth: 1.5,
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       Colors.white,
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: 12),
+                                SizedBox(width: 8),
                                 Text(
                                   "Menyimpan...",
                                   style: TextStyle(

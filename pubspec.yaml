@@ -64,6 +64,8 @@ flutter:
     - assets/images/bg_wrapped.png
     - assets/images/pressed.png
     - assets/images/finish.png
+    - assets/images/Star 2.png
+    - assets/images/Star 3.png
     # Model
     - assets/models/best_model.tflite  # model AI untuk pengenalan
     # Audio huruf hijaiyah
