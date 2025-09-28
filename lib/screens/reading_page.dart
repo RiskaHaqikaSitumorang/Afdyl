@@ -1112,9 +1112,7 @@ class _ReadingPageState extends State<ReadingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F0E8),
         elevation: 0,
         centerTitle: true,
         toolbarHeight: 80, // Increased height to accommodate the extra spacing

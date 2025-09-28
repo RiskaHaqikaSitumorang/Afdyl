@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/latihan_service.dart';
-import '../widgets/latihan_kata_header.dart';
 import '../widgets/recording_button.dart';
+import '../constants/app_colors.dart';
 
 class LatihanKataPage extends StatefulWidget {
   @override
@@ -73,11 +73,48 @@ class LatihanKataPageState extends State<LatihanKataPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
       body: SafeArea(
         child: Column(
           children: [
-            LatihanKataHeader(),
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.only(top: 8.0),
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.chevron_left,
+                        color: AppColors.tertiary,
+                        size: 25,
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Latihan Kata',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                        fontFamily: 'OpenDyslexic',
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 40),
+                ],
+              ),
+            ),
             Expanded(
               child: Align(
                 alignment: Alignment.center,
