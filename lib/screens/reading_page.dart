@@ -369,7 +369,7 @@ class _ReadingPageState extends State<ReadingPage> {
             style: TextStyle(
               fontSize: ayahNumberSize,
               color: AppColors.whiteSoft,
-              fontWeight: FontWeight.bold,
+              //
               fontFamily: 'Maqroo',
               height: 1.1,
             ),
@@ -451,7 +451,6 @@ class _ReadingPageState extends State<ReadingPage> {
           style: TextStyle(
             fontSize: fontSize,
             color: textColor,
-            fontWeight: FontWeight.bold,
             fontFamily: 'Maqroo',
             height: 1.4,
             letterSpacing: 0.4,
@@ -561,7 +560,6 @@ class _ReadingPageState extends State<ReadingPage> {
                                     style: TextStyle(
                                       fontSize: fontSize,
                                       color: Colors.black,
-                                      fontWeight: FontWeight.bold,
                                       fontFamily: 'Maqroo',
                                       height: 1.8,
                                       wordSpacing: jarakKata,
@@ -804,7 +802,6 @@ class _ReadingPageState extends State<ReadingPage> {
                                 style: TextStyle(
                                   fontSize: fontSize,
                                   fontFamily: 'Maqroo',
-                                  fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
                                 textAlign: TextAlign.center,
@@ -890,7 +887,6 @@ class _ReadingPageState extends State<ReadingPage> {
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontFamily: 'Maqroo',
-                                      fontWeight: FontWeight.bold,
                                       color: Colors.black87,
                                     ),
                                   ),
@@ -900,7 +896,6 @@ class _ReadingPageState extends State<ReadingPage> {
                                     style: TextStyle(
                                       fontSize: 20,
                                       fontFamily: 'Maqroo',
-                                      fontWeight: FontWeight.bold,
                                       color: Colors.black87,
                                     ),
                                   ),
@@ -1196,9 +1191,46 @@ class _ReadingPageState extends State<ReadingPage> {
                     child: ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(20),
-                      itemCount: ayahs.length,
+                      itemCount: ayahs.length + 1, // +1 untuk bismillah
                       itemBuilder: (context, index) {
-                        return _buildAyahWidget(index);
+                        if (index == 0) {
+                          // Item pertama adalah container Bismillah
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFFD4A574),
+                                  width: 3,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'بِسْمِ ٱللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
+                                  style: const TextStyle(
+                                    fontFamily: 'Maqroo',
+                                    fontSize: 36.0,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        } else {
+                          // Item ayah (index - 1 karena bismillah mengambil index 0)
+                          return _buildAyahWidget(index - 1);
+                        }
                       },
                     ),
                   ),

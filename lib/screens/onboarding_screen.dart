@@ -31,37 +31,37 @@ class OnboardingScreen extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(30),
                           child: Image.asset(
-                          'assets/images/Star 2.png',
-                          width: 240,
-                          height: 240,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                            Icons.star,
-                            size: 50,
-                            color: Colors.grey,
-                            );
-                          },
+                            'assets/images/Star 2.png',
+                            width: 240,
+                            height: 240,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.star,
+                                size: 50,
+                                color: Colors.grey,
+                              );
+                            },
                           ),
                         ),
                       ),
-                        Positioned(
-                        bottom: 0, 
-                        right: -4, 
+                      Positioned(
+                        bottom: 0,
+                        right: -4,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(30),
                           child: Image.asset(
-                          'assets/images/Star 3.png',
-                          width: 240,
-                          height: 240,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                            Icons.star,
-                            size: 50,
-                            color: Colors.grey,
-                            );
-                          },
+                            'assets/images/Star 3.png',
+                            width: 240,
+                            height: 240,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.star,
+                                size: 50,
+                                color: Colors.grey,
+                              );
+                            },
                           ),
                         ),
                       ),

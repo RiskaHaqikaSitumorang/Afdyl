@@ -112,7 +112,7 @@ class _ControlButtonsState extends State<ControlButtons> {
                               : (hasTracing
                                   ? Color(0xFFB8D4B8).withOpacity(0.6)
                                   : Colors.grey[300]),
-                      shape: BoxShape.circle,                      
+                      shape: BoxShape.circle,
                     ),
                     child:
                         isProcessing
@@ -131,7 +131,9 @@ class _ControlButtonsState extends State<ControlButtons> {
                                   ? (isCorrect ? Icons.check : Icons.error)
                                   : Icons.check_circle,
                               color:
-                                  hasTracing ? Color.fromARGB(255, 71, 108, 71) : Colors.grey[600],
+                                  hasTracing
+                                      ? Color.fromARGB(255, 71, 108, 71)
+                                      : Colors.grey[600],
                               size: 28,
                             ),
                   ),
@@ -148,7 +150,9 @@ class _ControlButtonsState extends State<ControlButtons> {
                       color:
                           hasTracing
                               ? (showFeedback
-                                  ? (isCorrect ? Color.fromARGB(255, 71, 108, 71) : Colors.red)
+                                  ? (isCorrect
+                                      ? Color.fromARGB(255, 71, 108, 71)
+                                      : Colors.red)
                                   : Color.fromARGB(255, 71, 108, 71))
                               : Colors.grey[600],
                       fontFamily: 'OpenDyslexic',
