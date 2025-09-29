@@ -526,10 +526,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   const SizedBox(height: 24),
                 ],
 
-                // Spacer untuk mendorong button ke bawah
                 Expanded(child: SizedBox()),
 
-                // Button di paling bawah dengan tinggi 20
                 SizedBox(
                   width: double.infinity,
                   height: 60,

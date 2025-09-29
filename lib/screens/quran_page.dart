@@ -357,7 +357,7 @@ class QuranPageState extends State<QuranPage>
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE8C5C5),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
@@ -563,12 +563,11 @@ class QuranPageState extends State<QuranPage>
         isSurahSelected
             ? (item['englishName'] ?? 'Surah ${index + 1}')
             : (item['name'] ?? 'Juz ${index + 1}');
-    final subtitle = isSurahSelected ? item['name'] : item['arabicName'];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFD4A5A5),
+        color: AppColors.tertiary.withOpacity(0.2),
         borderRadius: BorderRadius.circular(25),
       ),
       child: ListTile(
@@ -582,21 +581,7 @@ class QuranPageState extends State<QuranPage>
             fontFamily: 'OpenDyslexic',
           ),
         ),
-        subtitle:
-            subtitle != null
-                ? _buildHighlightedText(
-                  subtitle,
-                  isSurahSelected
-                      ? ArabicTextStyles.custom(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      )
-                      : ArabicTextStyles.custom(
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                )
-                : null,
+        subtitle: null,
         onTap: () => _handleItemTap(item, index),
       ),
     );
