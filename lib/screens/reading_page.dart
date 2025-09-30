@@ -1193,13 +1193,18 @@ class _ReadingPageState extends State<ReadingPage> {
                       padding: const EdgeInsets.all(20),
                       itemCount: ayahs.length + 1, // +1 untuk bismillah
                       itemBuilder: (context, index) {
-                        if (index == 0) {
+                        if (index == 0 &&
+                            widget.number != 1 &&
+                            widget.number != 9) {
                           // Item pertama adalah container Bismillah
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 20),
                             child: Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 20,
+                                horizontal: 16,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 borderRadius: BorderRadius.circular(14),
@@ -1215,21 +1220,24 @@ class _ReadingPageState extends State<ReadingPage> {
                                   ),
                                 ],
                               ),
-                              child: Center(
-                                child: Text(
-                                  'بِسْمِ ٱللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
-                                  style: const TextStyle(
-                                    fontFamily: 'Maqroo',
-                                    fontSize: 36.0,
-                                    color: Colors.black,
-                                  ),
+                              child: Text(
+                                'بِسْمِ ٱللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
+                                style: TextStyle(
+                                  fontFamily: 'Maqroo',
+                                  fontSize: fontSize,
+                                  color: Colors.black,
+                                  wordSpacing: jarakKata,
                                 ),
+                                textAlign: TextAlign.right,
                               ),
                             ),
                           );
                         } else {
-                          // Item ayah (index - 1 karena bismillah mengambil index 0)
-                          return _buildAyahWidget(index - 1);
+                          final ayahIndex =
+                              widget.number == 1 || widget.number == 9
+                                  ? index
+                                  : index - 1;
+                          return _buildAyahWidget(ayahIndex);
                         }
                       },
                     ),

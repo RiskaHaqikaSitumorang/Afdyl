@@ -218,13 +218,42 @@ class GameController {
     );
   }
 
-  void shuffleGame(void Function(VoidCallback) setState) {
-    setState(_shuffleGame);
+  void shuffleGame(
+    void Function(VoidCallback) setState, {
+    PageController? pageController,
+  }) {
+    setState(() {
+      _shuffleGame();
+      // Notify that PageController should be updated
+      if (pageController != null) {
+        // Use post-frame callback to ensure the setState completes first
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          pageController.animateToPage(
+            centerCardIndex,
+            duration: Duration(milliseconds: 400),
+            curve: Curves.easeInOut,
+          );
+        });
+      }
+    });
   }
 
   void updateCenterCardIndex(int index, void Function(VoidCallback) setState) {
     setState(() {
       centerCardIndex = index;
+    });
+  }
+
+  // Method to sync PageController with centerCardIndex after shuffle
+  void syncPageController(PageController pageController) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (pageController.hasClients) {
+        pageController.animateToPage(
+          centerCardIndex,
+          duration: Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+        );
+      }
     });
   }
 
