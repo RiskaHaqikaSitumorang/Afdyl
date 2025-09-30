@@ -260,26 +260,29 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
             ),
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(top: 8.0, right: 16.0),
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.tertiary.withOpacity(0.4),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: Image.asset(
-                'assets/images/ic_shuffle.png',
-                width: 20,
-                height: 20,
-                color: AppColors.tertiary,
-              ),
-              onPressed: () {},
-            ),
-          ),
-        ],
+        // actions: [
+        //   Container(
+        //     margin: const EdgeInsets.only(top: 8.0, right: 16.0),
+        //     width: 40,
+        //     height: 40,
+        //     decoration: BoxDecoration(
+        //       color: AppColors.tertiary.withOpacity(0.4),
+        //       shape: BoxShape.circle,
+        //     ),
+        //     child: IconButton(
+        //       icon: Image.asset(
+        //         'assets/images/ic_shuffle.png',
+        //         width: 20,
+        //         height: 20,
+        //         color: AppColors.tertiary,
+        //       ),
+        //       onPressed:
+        //           _gameController.isGameCompleted
+        //               ? null
+        //               : () => _gameController.shuffleGame(setState),
+        //     ),
+        //   ),
+        // ],
       ),
       body: SafeArea(
         child: Stack(
@@ -463,6 +466,7 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                   ),
                 ),
                 SizedBox(height: 40),
+
                 // FEEDBACK
                 if (_gameController.showFeedback)
                   AnimatedBuilder(
@@ -493,35 +497,79 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                     },
                   ),
 
+                // SPACER - pushes flashcards to bottom
+                Spacer(),
+
                 // FLASHCARDS SECTION
-                Expanded(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          height: cardSize + 10,
-                          child: PageView.builder(
-                            controller: _pageController,
-                            physics:
-                                (_gameController.isDragging[_gameController
-                                            .centerCardIndex] ??
-                                        false)
-                                    ? const NeverScrollableScrollPhysics()
-                                    : const BouncingScrollPhysics(),
-                            onPageChanged:
-                                (index) => _gameController
-                                    .updateCenterCardIndex(index, setState),
-                            itemCount: _gameController.shuffledLetters.length,
-                            itemBuilder: (context, index) {
-                              return _buildTightSpacingFlashcard(index);
-                            },
+                Column(
+                  children: [
+                    Container(
+                      height: cardSize + 10,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        physics:
+                            (_gameController.isDragging[_gameController
+                                        .centerCardIndex] ??
+                                    false)
+                                ? const NeverScrollableScrollPhysics()
+                                : const BouncingScrollPhysics(),
+                        onPageChanged:
+                            (index) => _gameController.updateCenterCardIndex(
+                              index,
+                              setState,
+                            ),
+                        itemCount: _gameController.shuffledLetters.length,
+                        itemBuilder: (context, index) {
+                          return _buildTightSpacingFlashcard(index);
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.tertiary.withOpacity(0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Image.asset(
+                              'assets/images/ic_shuffle.png',
+                              width: 20,
+                              height: 20,
+                              color: AppColors.tertiary,
+                            ),
+                            onPressed:
+                                _gameController.isGameCompleted
+                                    ? null
+                                    : () {
+                                      // First shuffle the game
+                                      _gameController.shuffleGame(
+                                        setState,
+                                        pageController: _pageController,
+                                      );
+                                      // Then ensure PageController syncs to new center
+                                      _gameController.syncPageController(
+                                        _pageController,
+                                      );
+                                    },
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Acak Kartu',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'OpenDyslexic',
+                            color: AppColors.tertiary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),

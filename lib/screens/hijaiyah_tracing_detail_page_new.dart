@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/svg_tracing_canvas.dart';
-import '../services/svg_tracing_service.dart';
+import '../widgets/path_tracing_canvas.dart';
+import '../services/path_based_tracing_service.dart';
 import '../constants/app_colors.dart';
 
 class HijaiyahTracingDetailPage extends StatefulWidget {
@@ -19,7 +19,7 @@ class HijaiyahTracingDetailPage extends StatefulWidget {
 }
 
 class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
-  final SVGTracingService _tracingService = SVGTracingService();
+  final PathBasedTracingService _tracingService = PathBasedTracingService();
 
   @override
   void initState() {
@@ -110,7 +110,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Trace the complete path carefully. Each stroke must be drawn fully.',
+                        'Follow the dots in order to trace the letter correctly',
                         style: TextStyle(
                           color: Colors.blue[700],
                           fontWeight: FontWeight.w500,
@@ -126,7 +126,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
               // Tracing Canvas
               Expanded(
                 child: Center(
-                  child: SVGTracingCanvas(
+                  child: PathTracingCanvas(
                     letter: widget.letter,
                     tracingService: _tracingService,
                   ),
@@ -170,17 +170,12 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
 
               SizedBox(height: 20),
 
-              // Progress Feedback - SVG Version
+              // Progress Feedback
               StreamBuilder<Map<String, dynamic>>(
                 stream: _tracingService.updateStream,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return SizedBox.shrink();
-                  }
-
                   if (snapshot.hasData) {
                     final data = snapshot.data!;
-                    String message = data['message'] ?? '';
 
                     if (data.containsKey('letterCompleted') &&
                         data['letterCompleted'] == true) {
@@ -193,99 +188,13 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.celebration,
-                              color: Colors.green[600],
-                              size: 30,
-                            ),
+                            Icon(Icons.check_circle, color: Colors.green[600]),
                             SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Excellent! Letter ${widget.letter} completed successfully! 🎉',
+                                'Excellent! You traced the letter correctly!',
                                 style: TextStyle(
                                   color: Colors.green[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else if (data.containsKey('strokeCompleted') &&
-                        data['strokeCompleted'] == true) {
-                      final current = data['currentStrokeIndex'] ?? 0;
-                      final total = data['totalStrokes'] ?? 0;
-                      return Container(
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.blue[300]!),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.blue[600]),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Bagus! Lanjut ke garis ${current + 1} dari $total',
-                                style: TextStyle(
-                                  color: Colors.blue[700],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else if (data.containsKey('strokeInvalid') &&
-                        data['strokeInvalid'] == true) {
-                      return Container(
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.orange[300]!),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.refresh, color: Colors.orange[600]),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                message.isNotEmpty
-                                    ? message
-                                    : 'Coba lagi, ikuti jalur titik biru.',
-                                style: TextStyle(
-                                  color: Colors.orange[700],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    } else if (data.containsKey('pathInvalid') &&
-                        data['pathInvalid'] == true) {
-                      return Container(
-                        padding: EdgeInsets.all(15),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.orange[300]!),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info, color: Colors.orange[600]),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                message.isNotEmpty
-                                    ? message
-                                    : 'Try again! Follow the dots.',
-                                style: TextStyle(
-                                  color: Colors.orange[700],
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
