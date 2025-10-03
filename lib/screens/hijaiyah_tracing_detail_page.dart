@@ -20,10 +20,27 @@ class HijaiyahTracingDetailPage extends StatefulWidget {
 
 class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
   final SVGTracingService _tracingService = SVGTracingService();
+  bool isLetterCompleted = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Listen to tracing updates for completion status
+    _tracingService.updateStream.listen((data) {
+      if (data.containsKey('letterCompleted') &&
+          data['letterCompleted'] == true) {
+        setState(() {
+          isLetterCompleted = true;
+        });
+      }
+      if (data.containsKey('tracingReset')) {
+        setState(() {
+          isLetterCompleted = false;
+        });
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tracingService.initializeLetter(widget.letter);
     });
@@ -38,7 +55,6 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.whiteSoft,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -72,13 +88,19 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                 ),
                 child: Column(
                   children: [
-                    Text(
-                      widget.letter,
-                      style: TextStyle(
-                        fontSize: 80,
-                        fontFamily: 'Maqroo',
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                    AnimatedContainer(
+                      duration: Duration(milliseconds: 500),
+                      child: Text(
+                        widget.letter,
+                        style: TextStyle(
+                          fontSize: 80,
+                          fontFamily: 'Maqroo',
+                          fontWeight: FontWeight.bold,
+                          color:
+                              isLetterCompleted
+                                  ? Colors.green[600]
+                                  : AppColors.primary,
+                        ),
                       ),
                     ),
                     SizedBox(height: 10),
@@ -90,6 +112,26 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                         color: Colors.grey[700],
                       ),
                     ),
+                    if (isLetterCompleted) ...[
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.star, color: Colors.amber, size: 20),
+                          SizedBox(width: 5),
+                          Text(
+                            'Completed!',
+                            style: TextStyle(
+                              color: Colors.green[600],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          Icon(Icons.star, color: Colors.amber, size: 20),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -110,7 +152,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Trace the complete path carefully. Each stroke must be drawn fully.',
+                        'Trace semua bagian huruf (termasuk titik-titik) lalu tekan tombol "Cek".',
                         style: TextStyle(
                           color: Colors.blue[700],
                           fontWeight: FontWeight.w500,
@@ -126,9 +168,25 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
               // Tracing Canvas
               Expanded(
                 child: Center(
-                  child: SVGTracingCanvas(
-                    letter: widget.letter,
-                    tracingService: _tracingService,
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 500),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              isLetterCompleted
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.black12,
+                          blurRadius: isLetterCompleted ? 15 : 10,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: SVGTracingCanvas(
+                      letter: widget.letter,
+                      tracingService: _tracingService,
+                    ),
                   ),
                 ),
               ),
@@ -139,10 +197,26 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Tombol Cek - untuk validasi tracing
+                  ElevatedButton.icon(
+                    onPressed: () => _tracingService.validateTracing(),
+                    icon: Icon(Icons.check_circle),
+                    label: Text('Cek'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 25,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+
+                  // Tombol Sound
                   ElevatedButton.icon(
                     onPressed: () => _tracingService.playSound(widget.letter),
                     icon: Icon(Icons.volume_up),
-                    label: Text('Play Sound'),
+                    label: Text('Sound'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -152,8 +226,15 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                       ),
                     ),
                   ),
+
+                  // Tombol Reset
                   ElevatedButton.icon(
-                    onPressed: () => _tracingService.resetTracing(),
+                    onPressed: () {
+                      _tracingService.resetTracing();
+                      setState(() {
+                        isLetterCompleted = false;
+                      });
+                    },
                     icon: Icon(Icons.refresh),
                     label: Text('Reset'),
                     style: ElevatedButton.styleFrom(
@@ -184,12 +265,20 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
 
                     if (data.containsKey('letterCompleted') &&
                         data['letterCompleted'] == true) {
-                      return Container(
+                      return AnimatedContainer(
+                        duration: Duration(milliseconds: 500),
                         padding: EdgeInsets.all(15),
                         decoration: BoxDecoration(
                           color: Colors.green[50],
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(color: Colors.green[300]!),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.2),
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -200,13 +289,27 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                             ),
                             SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                'Excellent! Letter ${widget.letter} completed successfully! 🎉',
-                                style: TextStyle(
-                                  color: Colors.green[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Luar Biasa! 🎉',
+                                    style: TextStyle(
+                                      color: Colors.green[700],
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Huruf ${widget.letter} berhasil diselesaikan!',
+                                    style: TextStyle(
+                                      color: Colors.green[600],
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

@@ -71,35 +71,42 @@ flutter:
     - assets/images/finish.png
     - assets/images/Star 2.png
     - assets/images/Star 3.png
+    
+    # Hijaiyah Dashed SVG untuk tracing
+    - assets/images/hijaiyah_svg_dashed/
+    
+    # Hijaiyah Original PNG untuk background
+    - assets/images/hijaiyah_original/
+    
     # Hijaiyah SVG
-    - assets/images/hijaiyah_svg/alif.svg
-    - assets/images/hijaiyah_svg/ba.svg
-    - assets/images/hijaiyah_svg/jim.svg
-    - assets/images/hijaiyah_svg/dal.svg
-    - assets/images/hijaiyah_svg/dzal.svg
-    - assets/images/hijaiyah_svg/ra.svg
-    - assets/images/hijaiyah_svg/zai.svg
-    - assets/images/hijaiyah_svg/sin.svg
-    - assets/images/hijaiyah_svg/syin.svg
-    - assets/images/hijaiyah_svg/shad.svg
-    - assets/images/hijaiyah_svg/dhad.svg
-    - assets/images/hijaiyah_svg/tha.svg
-    - assets/images/hijaiyah_svg/zha.svg
-    - assets/images/hijaiyah_svg/ain.svg
-    - assets/images/hijaiyah_svg/ghain.svg
-    - assets/images/hijaiyah_svg/fa.svg
-    - assets/images/hijaiyah_svg/qaf.svg
-    - assets/images/hijaiyah_svg/kaf.svg
-    - assets/images/hijaiyah_svg/lam.svg
-    - assets/images/hijaiyah_svg/mim.svg
-    - assets/images/hijaiyah_svg/nun.svg
-    - assets/images/hijaiyah_svg/Hā.svg
-    - assets/images/hijaiyah_svg/ha.svg
-    - assets/images/hijaiyah_svg/kha.svg
-    - assets/images/hijaiyah_svg/ta.svg
-    - assets/images/hijaiyah_svg/tsa.svg
-    - assets/images/hijaiyah_svg/waw.svg
-    - assets/images/hijaiyah_svg/ya.svg
+    # - assets/images/hijaiyah_svg/alif.svg
+    # - assets/images/hijaiyah_svg/ba.svg
+    # - assets/images/hijaiyah_svg/jim.svg
+    # - assets/images/hijaiyah_svg/dal.svg
+    # - assets/images/hijaiyah_svg/dzal.svg
+    # - assets/images/hijaiyah_svg/ra.svg
+    # - assets/images/hijaiyah_svg/zai.svg
+    # - assets/images/hijaiyah_svg/sin.svg
+    # - assets/images/hijaiyah_svg/syin.svg
+    # - assets/images/hijaiyah_svg/shad.svg
+    # - assets/images/hijaiyah_svg/dhad.svg
+    # - assets/images/hijaiyah_svg/tha.svg
+    # - assets/images/hijaiyah_svg/zha.svg
+    # - assets/images/hijaiyah_svg/ain.svg
+    # - assets/images/hijaiyah_svg/ghain.svg
+    # - assets/images/hijaiyah_svg/fa.svg
+    # - assets/images/hijaiyah_svg/qaf.svg
+    # - assets/images/hijaiyah_svg/kaf.svg
+    # - assets/images/hijaiyah_svg/lam.svg
+    # - assets/images/hijaiyah_svg/mim.svg
+    # - assets/images/hijaiyah_svg/nun.svg
+    # - assets/images/hijaiyah_svg/Hā.svg
+    # - assets/images/hijaiyah_svg/ha.svg
+    # - assets/images/hijaiyah_svg/kha.svg
+    # - assets/images/hijaiyah_svg/ta.svg
+    # - assets/images/hijaiyah_svg/tsa.svg
+    # - assets/images/hijaiyah_svg/waw.svg
+    # - assets/images/hijaiyah_svg/ya.svg        
     # Model
     - assets/models/best_model.tflite  # model AI untuk pengenalan
     # Audio huruf hijaiyah

@@ -1,5 +1,8 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/svg_tracing_service.dart';
+import '../services/svg_path_parser.dart';
 
 class SVGTracingCanvas extends StatefulWidget {
   final String letter;
@@ -16,12 +19,35 @@ class SVGTracingCanvas extends StatefulWidget {
 }
 
 class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
+  ui.Image? _backgroundImage;
+
   @override
   void initState() {
     super.initState();
+    _loadBackgroundImage();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.tracingService.initializeLetter(widget.letter);
     });
+  }
+
+  Future<void> _loadBackgroundImage() async {
+    final pngPath = SVGPathParser.getPngBackgroundPath(widget.letter);
+    if (pngPath == null) return;
+
+    try {
+      final ByteData data = await rootBundle.load(pngPath);
+      final Uint8List bytes = data.buffer.asUint8List();
+      final ui.Codec codec = await ui.instantiateImageCodec(bytes);
+      final ui.FrameInfo frameInfo = await codec.getNextFrame();
+      
+      if (mounted) {
+        setState(() {
+          _backgroundImage = frameInfo.image;
+        });
+      }
+    } catch (e) {
+      print('Error loading background image: $e');
+    }
   }
 
   @override
@@ -70,6 +96,7 @@ class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
                 painter: SVGTracingPainter(
                   letter: widget.letter,
                   tracingService: widget.tracingService,
+                  backgroundImage: _backgroundImage,
                 ),
                 size: Size.infinite,
               );
@@ -84,277 +111,185 @@ class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
 class SVGTracingPainter extends CustomPainter {
   final String letter;
   final SVGTracingService tracingService;
+  final ui.Image? backgroundImage;
 
-  SVGTracingPainter({required this.letter, required this.tracingService});
+  SVGTracingPainter({
+    required this.letter,
+    required this.tracingService,
+    this.backgroundImage,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     // Update canvas size
     tracingService.setCanvasSize(size);
 
-    // 1. Draw faded letter outline (all strokes)
-    _drawLetterOutline(canvas, size);
+    // 1. Draw white background only
+    _drawBackground(canvas, size);
 
-    // 2. Draw completed strokes (green)
-    _drawCompletedStrokes(canvas, size);
+    // 2. Draw separated dashed guide paths (each <g> group separately)
+    _drawSeparatedDashedPaths(canvas, size);
 
-    // 3. Draw current stroke guide points (blue dots)
-    _drawCurrentStrokeGuide(canvas, size);
+    // 3. Draw all user's traces (red)
+    _drawAllUserTraces(canvas, size);
 
-    // 4. Draw stroke numbers
-    _drawStrokeNumbers(canvas, size);
-
-    // 5. Draw user's current trace (red)
-    _drawUserTrace(canvas, size);
+    // 4. [DEBUG] Draw target points (uncomment untuk debug)
+    // _drawDebugTargetPoints(canvas, size);
   }
 
-  void _drawLetterOutline(Canvas canvas, Size size) {
-    final strokeMap = tracingService.getStrokeOrderMap();
-    if (strokeMap.isEmpty) return;
+  void _drawBackground(Canvas canvas, Size size) {
+    // Draw white background
+    final backgroundPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
 
-    // Draw each stroke with different opacity based on completion status
-    strokeMap.forEach((strokeOrder, points) {
-      final isCurrentStroke =
-          strokeOrder == tracingService.currentStrokeIndex + 1;
-      final isCompleted = strokeOrder <= tracingService.currentStrokeIndex;
+    // Draw PNG image as background if available
+    if (backgroundImage != null && tracingService.currentLetterData != null) {
+      // Use SVG viewBox as reference for consistent scaling
+      final viewBox = tracingService.currentLetterData!.viewBox;
+      
+      // Calculate scale using viewBox (same as SVG paths)
+      final scaleX = size.width / viewBox.width;
+      final scaleY = size.height / viewBox.height;
+      final scale = scaleX < scaleY ? scaleX : scaleY;
+      
+      // Calculate offset to center (same as SVG paths)
+      final scaledWidth = viewBox.width * scale;
+      final scaledHeight = viewBox.height * scale;
+      final offsetX = (size.width - scaledWidth) / 2;
+      final offsetY = (size.height - scaledHeight) / 2;
 
-      Color strokeColor;
-      double strokeWidth;
+      final imageWidth = backgroundImage!.width.toDouble();
+      final imageHeight = backgroundImage!.height.toDouble();
+      final srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
+      final dstRect = Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
 
-      if (isCompleted) {
-        strokeColor = Colors.green[300]!;
-        strokeWidth = 3.0;
-      } else if (isCurrentStroke) {
-        strokeColor = Colors.blue[200]!;
-        strokeWidth = 2.5;
-      } else {
-        strokeColor = Colors.grey[200]!;
-        strokeWidth = 1.5;
-      }
-
-      final outlinePaint =
-          Paint()
-            ..color = strokeColor
-            ..strokeWidth = strokeWidth
-            ..style = PaintingStyle.stroke
-            ..strokeCap = StrokeCap.round;
-
-      if (points.length < 2) {
-        // Single point (dot)
-        canvas.drawCircle(points.first, 4.0, outlinePaint);
-      } else {
-        // Path - draw as dashed line for better visibility
-        final path = Path();
-        path.moveTo(points.first.dx, points.first.dy);
-        for (int i = 1; i < points.length; i++) {
-          path.lineTo(points[i].dx, points[i].dy);
-        }
-        _drawDashedPath(canvas, path, outlinePaint, 6.0, 3.0);
-      }
-    });
-  }
-
-  void _drawCompletedStrokes(Canvas canvas, Size size) {
-    final completedPoints = tracingService.getCompletedStrokePoints();
-
-    final completedPaint =
-        Paint()
-          ..color = Colors.green[600]!
-          ..strokeWidth = 6.0
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
-
-    if (completedPoints.isNotEmpty) {
-      if (completedPoints.length < 2) {
-        // Single point (dot)
-        canvas.drawCircle(completedPoints.first, 6.0, completedPaint);
-      } else {
-        // Path
-        final path = Path();
-        path.moveTo(completedPoints.first.dx, completedPoints.first.dy);
-        for (int i = 1; i < completedPoints.length; i++) {
-          path.lineTo(completedPoints[i].dx, completedPoints[i].dy);
-        }
-        canvas.drawPath(path, completedPaint);
-      }
+      final paint = Paint()
+        ..filterQuality = FilterQuality.high
+        ..color = Colors.white.withOpacity(0.4); // Semi-transparent so dashed lines are visible
+      canvas.drawImageRect(backgroundImage!, srcRect, dstRect, paint);
     }
   }
 
-  void _drawCurrentStrokeGuide(Canvas canvas, Size size) {
-    final currentStrokePoints = tracingService.getCurrentStrokePoints();
+  void _drawSeparatedDashedPaths(Canvas canvas, Size size) {
+    if (tracingService.currentLetterData == null) return;
 
-    if (currentStrokePoints.isEmpty) return;
+    final pathPaint = Paint()
+      ..color = Colors.grey[400]!
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
-    // Draw guide path as dashed line for better visibility
-    final guidePaint =
-        Paint()
-          ..color = Colors.blue[300]!
-          ..strokeWidth = 3.0
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round;
+    // Get SVG viewBox size
+    final viewBox = tracingService.currentLetterData!.viewBox;
+    
+    // Calculate scale to fit canvas while maintaining aspect ratio
+    final scaleX = size.width / viewBox.width;
+    final scaleY = size.height / viewBox.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+    
+    // Calculate offset to center the paths
+    final offsetX = (size.width - (viewBox.width * scale)) / 2;
+    final offsetY = (size.height - (viewBox.height * scale)) / 2;
 
-    if (currentStrokePoints.length > 1) {
-      final path = Path();
-      path.moveTo(currentStrokePoints.first.dx, currentStrokePoints.first.dy);
-      for (int i = 1; i < currentStrokePoints.length; i++) {
-        path.lineTo(currentStrokePoints[i].dx, currentStrokePoints[i].dy);
-      }
+    // Save canvas state
+    canvas.save();
+    
+    // Apply transformation: translate to center, then scale
+    canvas.translate(offsetX, offsetY);
+    canvas.scale(scale, scale);
 
-      // Draw dashed path for better center line visibility
-      _drawDashedPath(canvas, path, guidePaint, 8.0, 4.0);
-    }
-
-    // Draw fewer, more prominent guide dots
-    final dotPaint =
-        Paint()
-          ..color = Colors.blue[500]!
-          ..style = PaintingStyle.fill;
-
-    // Only show every 3rd point to avoid clutter, plus start and end
-    for (int i = 0; i < currentStrokePoints.length; i++) {
-      bool shouldShow =
-          i == 0 || // Start point
-          i == currentStrokePoints.length - 1 || // End point
-          i % 3 == 0; // Every 3rd point
-
-      if (shouldShow) {
-        final point = currentStrokePoints[i];
-        double radius = 5.0;
-
-        // Make start and end points larger
-        if (i == 0 || i == currentStrokePoints.length - 1) {
-          radius = 8.0;
-        }
-
-        canvas.drawCircle(point, radius, dotPaint);
-
-        // White border for visibility
-        final borderPaint =
-            Paint()
-              ..color = Colors.white
-              ..strokeWidth = 2.0
-              ..style = PaintingStyle.stroke;
-        canvas.drawCircle(point, radius, borderPaint);
+    // Draw each group separately
+    for (int i = 0; i < tracingService.currentLetterData!.separatedPaths.length; i++) {
+      final groupPaths = tracingService.currentLetterData!.separatedPaths[i];
+      
+      // Draw each path in the group
+      for (final path in groupPaths) {
+        _drawDashedPath(canvas, path, pathPaint);
       }
     }
+    
+    // Restore canvas state
+    canvas.restore();
   }
 
-  void _drawDashedPath(
-    Canvas canvas,
-    Path path,
-    Paint paint,
-    double dashWidth,
-    double dashSpace,
-  ) {
+  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
+    // Simple dashed path implementation
+    // This creates a visual dashed effect
     final pathMetrics = path.computeMetrics();
-    for (final metric in pathMetrics) {
-      double distance = 0;
-      bool draw = true;
 
-      while (distance < metric.length) {
-        final nextDistance = distance + (draw ? dashWidth : dashSpace);
-        if (draw) {
-          final extractPath = metric.extractPath(
-            distance,
-            nextDistance.clamp(0, metric.length),
-          );
-          canvas.drawPath(extractPath, paint);
-        }
-        distance = nextDistance;
-        draw = !draw;
+    for (final pathMetric in pathMetrics) {
+      double distance = 0.0;
+      const double dashLength = 15.0;
+      const double gapLength = 10.0;
+
+      while (distance < pathMetric.length) {
+        final segment = pathMetric.extractPath(distance, distance + dashLength);
+        canvas.drawPath(segment, paint);
+        distance += dashLength + gapLength;
       }
     }
   }
 
-  void _drawStrokeNumbers(Canvas canvas, Size size) {
-    final strokeMap = tracingService.getStrokeOrderMap();
+  void _drawAllUserTraces(Canvas canvas, Size size) {
+    final tracePaint = Paint()
+      ..color = Colors.red[600]!
+      ..strokeWidth = 6.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
 
-    strokeMap.forEach((strokeOrder, points) {
-      if (points.isNotEmpty) {
-        final startPoint = points.first;
+    // Draw all completed traces (from allTraces)
+    for (final trace in tracingService.allTraces) {
+      if (trace.length < 2) continue;
 
-        // Determine color based on completion status
-        Color numberColor =
-            strokeOrder <= tracingService.currentStrokeIndex
-                ? Colors.green[700]!
-                : strokeOrder == tracingService.currentStrokeIndex + 1
-                ? Colors.red[700]!
-                : Colors.grey[600]!;
-
-        final textPainter = TextPainter(
-          text: TextSpan(
-            text: strokeOrder.toString(),
-            style: TextStyle(
-              color: numberColor,
-              fontSize: 14.0,
-              fontWeight: FontWeight.bold,
-              backgroundColor: Colors.white.withOpacity(0.8),
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        );
-
-        textPainter.layout();
-
-        final offset = Offset(
-          startPoint.dx - textPainter.width / 2,
-          startPoint.dy - textPainter.height / 2 - 15,
-        );
-
-        // Draw background circle
-        final bgPaint =
-            Paint()
-              ..color = Colors.white.withOpacity(0.9)
-              ..style = PaintingStyle.fill;
-
-        canvas.drawCircle(
-          Offset(startPoint.dx, startPoint.dy - 15),
-          12.0,
-          bgPaint,
-        );
-
-        textPainter.paint(canvas, offset);
+      final path = Path();
+      path.moveTo(trace.first.dx, trace.first.dy);
+      for (int i = 1; i < trace.length; i++) {
+        path.lineTo(trace[i].dx, trace[i].dy);
       }
-    });
-  }
-
-  void _drawUserTrace(Canvas canvas, Size size) {
-    final List<Offset> currentTrace =
-        tracingService.allStrokes.isNotEmpty
-            ? tracingService.allStrokes[0]
-            : <Offset>[];
-
-    if (currentTrace.length < 2) return;
-
-    final tracePaint =
-        Paint()
-          ..color = Colors.red[600]!
-          ..strokeWidth = 5.0
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
-
-    final path = Path();
-    path.moveTo(currentTrace.first.dx, currentTrace.first.dy);
-
-    for (int i = 1; i < currentTrace.length; i++) {
-      path.lineTo(currentTrace[i].dx, currentTrace[i].dy);
+      canvas.drawPath(path, tracePaint);
     }
 
-    canvas.drawPath(path, tracePaint);
+    // Draw current active trace (being drawn now)
+    final currentTrace = tracingService.currentTrace;
+    if (currentTrace.length >= 2) {
+      final path = Path();
+      path.moveTo(currentTrace.first.dx, currentTrace.first.dy);
+      for (int i = 1; i < currentTrace.length; i++) {
+        path.lineTo(currentTrace[i].dx, currentTrace[i].dy);
+      }
+      canvas.drawPath(path, tracePaint);
+    }
+  }
 
-    // Draw trace start point
-    final startPaint =
-        Paint()
-          ..color = Colors.red[800]!
-          ..style = PaintingStyle.fill;
+  // Debug method - uncomment dalam paint() untuk melihat target points
+  void _drawDebugTargetPoints(Canvas canvas, Size size) {
+    if (tracingService.currentLetterData == null) return;
 
-    canvas.drawCircle(currentTrace.first, 4.0, startPaint);
+    final viewBox = tracingService.currentLetterData!.viewBox;
+    final scaleX = size.width / viewBox.width;
+    final scaleY = size.height / viewBox.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+    final offsetX = (size.width - (viewBox.width * scale)) / 2;
+    final offsetY = (size.height - (viewBox.height * scale)) / 2;
+
+    final pointPaint = Paint()
+      ..color = Colors.blue.withOpacity(0.5)
+      ..style = PaintingStyle.fill;
+
+    for (final point in tracingService.currentLetterData!.pathPoints) {
+      final svgX = point.position.dx * viewBox.width;
+      final svgY = point.position.dy * viewBox.height;
+      final canvasX = (svgX * scale) + offsetX;
+      final canvasY = (svgY * scale) + offsetY;
+      
+      canvas.drawCircle(Offset(canvasX, canvasY), 2, pointPaint);
+    }
   }
 
   @override
-  bool shouldRepaint(SVGTracingPainter oldDelegate) {
-    return true; // Always repaint for real-time updates
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:xml/xml.dart';
@@ -24,46 +25,89 @@ class SVGLetterData {
   final List<Path> strokePaths;
   final List<int> strokeOrder;
   final Size viewBox;
+  final List<List<Path>> separatedPaths; // Each group contains multiple paths
 
   SVGLetterData({
     required this.pathPoints,
     required this.strokePaths,
     required this.strokeOrder,
     required this.viewBox,
+    required this.separatedPaths,
   });
 }
 
 class SVGPathParser {
+  // Mapping untuk file SVG dashed (untuk tracing path)
   static const Map<String, String> letterToSvgFile = {
-    'ا': 'alif.svg',
-    'ب': 'ba.svg',
-    'ت': 'ta.svg',
-    'ث': 'tsa.svg',
-    'ج': 'jim.svg',
-    'ح': 'ha.svg',
-    'خ': 'kha.svg',
-    'د': 'dal.svg',
-    'ذ': 'dzal.svg',
-    'ر': 'ra.svg',
-    'ز': 'zai.svg',
-    'س': 'sin.svg',
-    'ش': 'syin.svg',
-    'ص': 'shad.svg',
-    'ض': 'dhad.svg',
-    'ط': 'tha.svg',
-    'ظ': 'zha.svg',
-    'ع': 'ain.svg',
-    'غ': 'ghain.svg',
-    'ف': 'fa.svg',
-    'ق': 'qaf.svg',
-    'ك': 'kaf.svg',
-    'ل': 'lam.svg',
-    'م': 'mim.svg',
-    'ن': 'nun.svg',
-    'ه': 'Hā.svg', // Sesuai dengan file yang ada
-    'و': 'waw.svg',
-    'ي': 'ya.svg',
+    'ا': 'alif-dashed.svg',
+    'ب': 'ba-dashed.svg',
+    'ت': 'ta-dashed.svg',
+    'ث': 'tsa-dashed.svg',
+    'ج': 'jim-dashed.svg',
+    'ح': 'ha-dashed.svg',
+    'خ': 'kha-dashed.svg',
+    'د': 'dal-dashed.svg',
+    'ذ': 'dzal-dashed.svg',
+    'ر': 'ra-dashed.svg',
+    'ز': 'zai-dashed.svg',
+    'س': 'sin-dashed.svg',
+    'ش': 'syin-dashed.svg',
+    'ص': 'shad-dashed.svg',
+    'ض': 'dhad-dashed.svg',
+    'ط': 'tha-dashed.svg',
+    'ظ': 'zha-dashed.svg',
+    'ع': 'ain-dashed.svg',
+    'غ': 'ghain-dashed.svg',
+    'ف': 'fa-dashed.svg',
+    'ق': 'qaf-dashed.svg',
+    'ك': 'kaf-dashed.svg',
+    'ل': 'lam-dashed.svg',
+    'م': 'mim-dashed.svg',
+    'ن': 'nun-dashed.svg',
+    'ه': 'Hā-dashed.svg',
+    'و': 'waw-dashed.svg',
+    'ي': 'ya-dashed.svg',
   };
+
+  // Mapping untuk file PNG original (untuk background)
+  static const Map<String, String> letterToPngFile = {
+    'ا': 'alif.png',
+    'ب': 'ba.png',
+    'ت': 'ta.png',
+    'ث': 'tsa.png',
+    'ج': 'jim.png',
+    'ح': 'ha.png',
+    'خ': 'kha.png',
+    'د': 'dal.png',
+    'ذ': 'dzal.png',
+    'ر': 'ra.png',
+    'ز': 'zai.png',
+    'س': 'sin.png',
+    'ش': 'syin.png',
+    'ص': 'shad.png',
+    'ض': 'dhad.png',
+    'ط': 'tha.png',
+    'ظ': 'zha.png',
+    'ع': 'ain.png',
+    'غ': 'ghain.png',
+    'ف': 'fa.png',
+    'ق': 'qaf.png',
+    'ك': 'kaf.png',
+    'ل': 'lam.png',
+    'م': 'mim.png',
+    'ن': 'nun.png',
+    'ه': 'Hā.png',
+    'و': 'waw.png',
+    'ي': 'ya.png',
+  };
+
+  static String? getPngBackgroundPath(String letter) {
+    final fileName = letterToPngFile[letter];
+    if (fileName != null) {
+      return 'assets/images/hijaiyah_original/$fileName';
+    }
+    return null;
+  }
 
   static Future<SVGLetterData?> parseLetter(String letter) async {
     try {
@@ -73,9 +117,9 @@ class SVGPathParser {
         return null;
       }
 
-      // Load SVG file
+      // Load SVG dashed file
       final svgString = await rootBundle.loadString(
-        'assets/images/hijaiyah_svg/$fileName',
+        'assets/images/hijaiyah_svg_dashed/$fileName',
       );
       final document = XmlDocument.parse(svgString);
 
@@ -86,47 +130,63 @@ class SVGPathParser {
       List<SVGPathPoint> allPoints = [];
       List<Path> strokePaths = [];
       List<int> strokeOrders = [];
+      List<List<Path>> separatedPaths = [];
 
-      // Parse all path elements and group them
-      final pathElements = document.findAllElements('path');
-      List<Path> letterPaths = [];
+      // Parse setiap <g> element yang berisi path untuk tracing dashed
+      final gElements = document.findAllElements('g');
+      List<Path> tracingPaths = [];
+      int strokeOrder = 1;
 
-      for (final pathElement in pathElements) {
-        final pathData = pathElement.getAttribute('d');
-        final fill = pathElement.getAttribute('fill') ?? '';
-        final stroke = pathElement.getAttribute('stroke') ?? '';
-        final style = pathElement.getAttribute('style') ?? '';
+      print('Found ${gElements.length} <g> elements in SVG');
 
-        if (pathData != null && pathData.isNotEmpty) {
-          // Filter out background/frame paths
-          if (_isBackgroundPath(fill, stroke, style)) {
-            continue; // Skip background paths
+      for (final gElement in gElements) {
+        final pathElements = gElement.findElements('path');
+        List<Path> groupPaths = [];
+
+        for (final pathElement in pathElements) {
+          final pathData = pathElement.getAttribute('d');
+
+          if (pathData != null && pathData.isNotEmpty) {
+            try {
+              final path = parseSvgPathData(pathData);
+              if (_isValidTracingPath(path, viewBox)) {
+                tracingPaths.add(path);
+                groupPaths.add(path);
+                print(
+                  'Added tracing path from <g> tag, stroke order: $strokeOrder',
+                );
+              }
+            } catch (e) {
+              print('Error parsing path data: $e');
+            }
           }
+        }
 
-          // Parse the SVG path
-          final path = parseSvgPathData(pathData);
-
-          // Filter out very large paths that are likely frames
-          if (_isLikelyLetterPath(path, viewBox)) {
-            letterPaths.add(path);
-          }
+        if (groupPaths.isNotEmpty) {
+          separatedPaths.add(groupPaths);
+          strokeOrder++; // Increment stroke order for each <g> group
         }
       }
 
-      // Process each letter path separately to preserve internal details
-      int strokeOrderCounter = 1;
-      for (final path in letterPaths) {
-        strokePaths.add(path);
-        strokeOrders.add(strokeOrderCounter);
+      // Combine all dashed paths into single tracing path
+      if (tracingPaths.isNotEmpty) {
+        // Create separate tracing points for each <g> group (no connecting paths)
+        for (int i = 0; i < tracingPaths.length; i++) {
+          final points = _extractPointsFromPath(
+            tracingPaths[i],
+            i + 1, // Each <g> tag has separate stroke order
+            viewBox,
+          );
+          allPoints.addAll(points);
 
-        // Extract points from each path separately
-        final points = _extractPointsFromPath(
-          path,
-          strokeOrderCounter,
-          viewBox,
-        );
-        allPoints.addAll(points);
-        strokeOrderCounter++;
+          print('Added ${points.length} points for stroke ${i + 1}');
+        }
+
+        // Add all stroke paths dengan order yang benar
+        for (int i = 0; i < tracingPaths.length; i++) {
+          strokePaths.add(tracingPaths[i]);
+          strokeOrders.add(i + 1);
+        }
       }
 
       // Parse circle elements (for dots like in Ba, Ta, etc.)
@@ -165,6 +225,7 @@ class SVGPathParser {
         strokePaths: strokePaths,
         strokeOrder: strokeOrders,
         viewBox: viewBox,
+        separatedPaths: separatedPaths,
       );
     } catch (e) {
       print('Error parsing SVG for letter $letter: $e');
@@ -288,43 +349,18 @@ class SVGPathParser {
         normalizedPos.dy < (1.0 - edgeMargin);
   }
 
-  // Check if path is background/frame based on fill and stroke attributes
-  static bool _isBackgroundPath(String fill, String stroke, String style) {
-    // Skip paths that are clearly backgrounds
-    final lowerFill = fill.toLowerCase();
-    final lowerStyle = style.toLowerCase();
-
-    // Skip white/light colored fills (usually backgrounds)
-    if (lowerFill.contains('#fefe') ||
-        lowerFill.contains('#fff') ||
-        lowerFill.contains('white') ||
-        lowerStyle.contains('fill:#fefe') ||
-        lowerStyle.contains('fill:#fff')) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // Check if path is likely the actual letter (not frame)
-  static bool _isLikelyLetterPath(Path path, Size viewBox) {
+  // Check if path is valid for tracing (reasonable size and position)
+  static bool _isValidTracingPath(Path path, Size viewBox) {
     final bounds = path.getBounds();
 
-    // Calculate path coverage of the viewBox
-    final coverageX = bounds.width / viewBox.width;
-    final coverageY = bounds.height / viewBox.height;
+    // Check if path has reasonable size (not too small or too large)
+    final minSize = math.min(viewBox.width, viewBox.height) * 0.1;
+    final maxSize = math.min(viewBox.width, viewBox.height) * 0.9;
 
-    // If path covers more than 90% of width or height, it's likely a frame
-    if (coverageX > 0.9 || coverageY > 0.9) {
-      return false;
-    }
-
-    // Check if path is too close to edges
-    const margin = 15.0; // pixels
-    if (bounds.left < margin ||
-        bounds.top < margin ||
-        bounds.right > (viewBox.width - margin) ||
-        bounds.bottom > (viewBox.height - margin)) {
+    if (bounds.width < minSize ||
+        bounds.height < minSize ||
+        bounds.width > maxSize ||
+        bounds.height > maxSize) {
       return false;
     }
 
