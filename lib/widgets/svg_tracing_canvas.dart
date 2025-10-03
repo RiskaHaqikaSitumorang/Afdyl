@@ -189,7 +189,7 @@ class SVGTracingPainter extends CustomPainter {
 
     final pathPaint =
         Paint()
-          ..color = Colors.grey[400]!
+          ..color = Colors.grey[400]!.withOpacity(0.0)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.0
           ..strokeCap = StrokeCap.round
@@ -251,11 +251,14 @@ class SVGTracingPainter extends CustomPainter {
   }
 
   void _drawAllUserTraces(Canvas canvas, Size size) {
+    // Get stroke width from service (for adaptive coverage)
+    final strokeWidth = tracingService.strokeWidth;
+
     final tracePaint =
         Paint()
           ..color = Colors.red[600]!
           ..strokeWidth =
-              12.0 // ← INCREASED from 6.0 to 12.0
+              strokeWidth // ← Use value from service
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeJoin = StrokeJoin.round;

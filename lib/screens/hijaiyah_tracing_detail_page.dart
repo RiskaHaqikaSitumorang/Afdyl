@@ -240,13 +240,39 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black,
-        title: Text(
-          'Trace ${widget.letter}',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-        ),
         centerTitle: true,
+        toolbarHeight: 80, // Increased height to accommodate the extra spacing
+        leading: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+          decoration: BoxDecoration(
+            color: AppColors.tertiary.withOpacity(0.4),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.chevron_left,
+              color: AppColors.tertiary,
+              size: 25,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            "Jejak Hijaiyah",
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+        ),        
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -382,19 +408,33 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                 // Control Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                    // Tombol Cek - untuk validasi tracing
+                  children: [
+                    // Tombol Reset
                     ElevatedButton.icon(
-                      onPressed: () => _tracingService.validateTracing(),
-                      icon: Icon(Icons.check_circle),
-                      label: Text('Cek'),
+                      onPressed: () {
+                        _tracingService.resetTracing();
+                        setState(() {
+                          isLetterCompleted = false;
+                          _lastFeedback = null; // Clear feedback
+                        });
+                        // Scroll to top
+                        if (_scrollController.hasClients) {
+                          _scrollController.animateTo(
+                            0,
+                            duration: Duration(milliseconds: 500),
+                            curve: Curves.easeOut,
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.refresh),
+                      label: Text('Reset'),
                       style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 25,
-                        vertical: 12,
-                      ),
+                        backgroundColor: Colors.grey[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
                       ),
                     ),
 
@@ -404,41 +444,27 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
                       icon: Icon(Icons.volume_up),
                       label: Text('Sound'),
                       style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
                       ),
                     ),
 
-                    // Tombol Reset
+                    // Tombol Cek - untuk validasi tracing
                     ElevatedButton.icon(
-                      onPressed: () {
-                      _tracingService.resetTracing();
-                      setState(() {
-                        isLetterCompleted = false;
-                        _lastFeedback = null; // Clear feedback
-                      });
-                      // Scroll to top
-                      if (_scrollController.hasClients) {
-                        _scrollController.animateTo(
-                        0,
-                        duration: Duration(milliseconds: 500),
-                        curve: Curves.easeOut,
-                        );
-                      }
-                      },
-                      icon: Icon(Icons.refresh),
-                      label: Text('Reset'),
+                      onPressed: () => _tracingService.validateTracing(),
+                      icon: Icon(Icons.check_circle),
+                      label: Text('Cek'),
                       style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 25,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ],
