@@ -8,6 +8,8 @@ class SVGTracingService {
   // Current state
   List<Offset> currentTrace = [];
   List<List<Offset>> allTraces = []; // Store all disconnected traces
+  Map<int, bool> validatedTraces =
+      {}; // Track which traces are validated (green)
   bool isTracing = false;
 
   // SVG data
@@ -18,7 +20,7 @@ class SVGTracingService {
   Size? canvasSize;
 
   // Stroke width for adaptive coverage
-  double strokeWidth = 46.0; // Match the stroke width in canvas painter
+  double strokeWidth = 36.0; // Match the stroke width in canvas painter
 
   // Audio
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -164,7 +166,11 @@ class SVGTracingService {
     );
 
     if (coverage >= requiredCoverage) {
-      // Perfect tracing!
+      // Perfect tracing! Mark all traces as valid (green)
+      for (int i = 0; i < allTraces.length; i++) {
+        validatedTraces[i] = true;
+      }
+
       // await _playSuccessSound(currentLetter);
       _updateController.add({
         'letterCompleted': true,
@@ -317,6 +323,7 @@ class SVGTracingService {
   void resetTracing() {
     currentTrace.clear();
     allTraces.clear();
+    validatedTraces.clear(); // Clear validation status
     isTracing = false;
     _updateController.add({'tracingReset': true});
     print('🔄 Tracing reset - all traces cleared');

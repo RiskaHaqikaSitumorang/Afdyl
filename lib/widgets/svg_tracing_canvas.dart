@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/svg_tracing_service.dart';
 import '../services/svg_path_parser.dart';
+import '../constants/app_colors.dart';
 
 class SVGTracingCanvas extends StatefulWidget {
   final String letter;
@@ -53,22 +54,18 @@ class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 400, // Fixed width (same as parent)
-      height: 400, // Fixed height (same as parent)
+      width: 350, // Fixed width (same as parent)
+      height: 350, // Fixed height (same as parent)
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.grey[300]!, width: 2),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(13),
         child: GestureDetector(
           onPanStart: (details) {
             RenderBox box = context.findRenderObject() as RenderBox;
@@ -254,36 +251,48 @@ class SVGTracingPainter extends CustomPainter {
     // Get stroke width from service (for adaptive coverage)
     final strokeWidth = tracingService.strokeWidth;
 
-    final tracePaint =
-        Paint()
-          ..color = Colors.red[600]!
-          ..strokeWidth =
-              strokeWidth // ← Use value from service
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round;
-
-    // Draw all completed traces (from allTraces)
-    for (final trace in tracingService.allTraces) {
+    // Draw all completed traces (from allTraces) with appropriate color
+    for (int i = 0; i < tracingService.allTraces.length; i++) {
+      final trace = tracingService.allTraces[i];
       if (trace.length < 2) continue;
+
+      // Check if this trace is validated (green) or still pending (AppColors.primary)
+      final isValidated = tracingService.validatedTraces[i] ?? false;
+      final traceColor = isValidated ? Colors.green[600]! : AppColors.softBlack;
+
+      final tracePaint =
+          Paint()
+            ..color = traceColor
+            ..strokeWidth = strokeWidth
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round;
 
       final path = Path();
       path.moveTo(trace.first.dx, trace.first.dy);
-      for (int i = 1; i < trace.length; i++) {
-        path.lineTo(trace[i].dx, trace[i].dy);
+      for (int j = 1; j < trace.length; j++) {
+        path.lineTo(trace[j].dx, trace[j].dy);
       }
       canvas.drawPath(path, tracePaint);
     }
 
-    // Draw current active trace (being drawn now)
+    // Draw current active trace (being drawn now) - always AppColors.primary
     final currentTrace = tracingService.currentTrace;
     if (currentTrace.length >= 2) {
+      final currentTracePaint =
+          Paint()
+            ..color = AppColors.softBlack
+            ..strokeWidth = strokeWidth
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round;
+
       final path = Path();
       path.moveTo(currentTrace.first.dx, currentTrace.first.dy);
       for (int i = 1; i < currentTrace.length; i++) {
         path.lineTo(currentTrace[i].dx, currentTrace[i].dy);
       }
-      canvas.drawPath(path, tracePaint);
+      canvas.drawPath(path, currentTracePaint);
     }
   }
 
