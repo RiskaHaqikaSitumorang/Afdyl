@@ -112,7 +112,9 @@ class SVGTracingService {
     // Save current trace to allTraces if it has points
     if (currentTrace.isNotEmpty) {
       allTraces.add(List.from(currentTrace));
-      print('💾 Saved trace ${allTraces.length} with ${currentTrace.length} points');
+      print(
+        '💾 Saved trace ${allTraces.length} with ${currentTrace.length} points',
+      );
     }
 
     // Clear current trace for next stroke
@@ -207,28 +209,29 @@ class SVGTracingService {
 
     // Get SVG viewBox size
     final viewBox = currentLetterData!.viewBox;
-    
+
     // Calculate scale to fit canvas while maintaining aspect ratio (same as rendering)
     final scaleX = canvasSize!.width / viewBox.width;
     final scaleY = canvasSize!.height / viewBox.height;
     final scale = scaleX < scaleY ? scaleX : scaleY;
-    
+
     // Calculate offset to center (same as rendering)
     final offsetX = (canvasSize!.width - (viewBox.width * scale)) / 2;
     final offsetY = (canvasSize!.height - (viewBox.height * scale)) / 2;
 
     // Convert normalized coordinates to canvas coordinates with proper transformation
-    final canvasTargetPoints = allTargetPoints.map((point) {
-      // SVG coordinates (normalized in pathPoints are already in viewBox space)
-      final svgX = point.position.dx * viewBox.width;
-      final svgY = point.position.dy * viewBox.height;
-      
-      // Apply same transformation as rendering
-      final canvasX = (svgX * scale) + offsetX;
-      final canvasY = (svgY * scale) + offsetY;
-      
-      return Offset(canvasX, canvasY);
-    }).toList();
+    final canvasTargetPoints =
+        allTargetPoints.map((point) {
+          // SVG coordinates (normalized in pathPoints are already in viewBox space)
+          final svgX = point.position.dx * viewBox.width;
+          final svgY = point.position.dy * viewBox.height;
+
+          // Apply same transformation as rendering
+          final canvasX = (svgX * scale) + offsetX;
+          final canvasY = (svgY * scale) + offsetY;
+
+          return Offset(canvasX, canvasY);
+        }).toList();
 
     // Calculate how many target points are "covered" by combined user traces
     int coveredPoints = 0;
@@ -252,11 +255,15 @@ class SVGTracingService {
     }
 
     double coverageRatio = coveredPoints / canvasTargetPoints.length;
-    
-    print('🎯 Coverage: ${(coverageRatio * 100).toStringAsFixed(1)}% ($coveredPoints/${canvasTargetPoints.length} points)');
-    print('📝 Total traces: ${allTraces.length} completed + current (${currentTrace.length} points)');
+
+    print(
+      '🎯 Coverage: ${(coverageRatio * 100).toStringAsFixed(1)}% ($coveredPoints/${canvasTargetPoints.length} points)',
+    );
+    print(
+      '📝 Total traces: ${allTraces.length} completed + current (${currentTrace.length} points)',
+    );
     print('📐 Scale: $scale, Offset: ($offsetX, $offsetY)');
-    
+
     return coverageRatio;
   }
 
