@@ -17,6 +17,9 @@ class SVGTracingService {
   // Canvas properties
   Size? canvasSize;
 
+  // Stroke width for adaptive coverage
+  double strokeWidth = 46.0; // Match the stroke width in canvas painter
+
   // Audio
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -63,6 +66,12 @@ class SVGTracingService {
 
   void setCanvasSize(Size size) {
     canvasSize = size;
+  }
+
+  /// Update stroke width for adaptive coverage radius
+  /// Larger stroke width = more forgiving coverage
+  void setStrokeWidth(double width) {
+    strokeWidth = width;
   }
 
   Future<void> initializeLetter(String letter) async {
@@ -156,7 +165,7 @@ class SVGTracingService {
 
     if (coverage >= requiredCoverage) {
       // Perfect tracing!
-      await _playSuccessSound(currentLetter);
+      // await _playSuccessSound(currentLetter);
       _updateController.add({
         'letterCompleted': true,
         'coverage': coverage,
@@ -235,7 +244,14 @@ class SVGTracingService {
 
     // Calculate how many target points are "covered" by combined user traces
     int coveredPoints = 0;
-    const double coverageRadius = 30.0; // Distance tolerance for coverage
+
+    // ✨ ADAPTIVE COVERAGE RADIUS based on stroke width
+    // Larger stroke = more forgiving coverage radius
+    final double coverageRadius = strokeWidth;
+
+    print(
+      '📏 Adaptive Coverage: strokeWidth=$strokeWidth → radius=${coverageRadius.toStringAsFixed(1)}px',
+    );
 
     for (Offset targetPoint in canvasTargetPoints) {
       bool pointCovered = false;
