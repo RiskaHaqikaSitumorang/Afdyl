@@ -7,9 +7,8 @@ import 'svg_path_parser.dart';
 class SVGTracingService {
   // Current state
   List<Offset> currentTrace = [];
+  List<List<Offset>> allTraces = []; // Store all disconnected traces
   bool isTracing = false;
-  int currentStrokeIndex = 0;
-  List<bool> completedStrokes = [];
 
   // SVG data
   SVGLetterData? currentLetterData;
@@ -68,7 +67,6 @@ class SVGTracingService {
 
   Future<void> initializeLetter(String letter) async {
     currentLetter = letter;
-    currentStrokeIndex = 0;
     isTracing = false;
     currentTrace.clear();
 
@@ -76,17 +74,10 @@ class SVGTracingService {
     currentLetterData = await SVGPathParser.parseLetter(letter);
 
     if (currentLetterData != null) {
-      completedStrokes = List.filled(
-        currentLetterData!.strokeOrder.length,
-        false,
-      );
-
       print('Loaded SVG data for $letter:');
-      print('- ${currentLetterData!.pathPoints.length} path points');
-      print('- ${currentLetterData!.strokePaths.length} strokes');
+      print('- ${currentLetterData!.pathPoints.length} dashed path points');
       print('- ViewBox: ${currentLetterData!.viewBox}');
     } else {
-      completedStrokes = [];
       print('Failed to load SVG data for letter: $letter');
     }
 
@@ -94,6 +85,7 @@ class SVGTracingService {
       'letterInitialized': true,
       'letter': letter,
       'hasData': currentLetterData != null,
+      'totalTracingPoints': currentLetterData?.pathPoints.length ?? 0,
     });
   }
 
@@ -117,161 +109,155 @@ class SVGTracingService {
 
     isTracing = false;
 
-    bool strokeCompleted = await _validateCurrentStroke();
-    if (strokeCompleted) {
-      completedStrokes[currentStrokeIndex] = true;
-      currentStrokeIndex++;
-
-      // Check if all strokes are completed
-      if (_isLetterCompleted()) {
-        await _playSuccessSound(currentLetter);
-        _updateController.add({
-          'letterCompleted': true,
-          'allStrokesCompleted': true,
-        });
-      } else {
-        _updateController.add({
-          'strokeCompleted': true,
-          'currentStrokeIndex': currentStrokeIndex,
-          'totalStrokes': completedStrokes.length,
-        });
-      }
-    } else {
-      // Provide more specific error messages
-      String errorMessage = 'Trace tidak valid. ';
-      if (currentTrace.length < 10) {
-        errorMessage += 'Trace terlalu pendek.';
-      } else {
-        errorMessage += 'Ikuti jalur dengan lebih teliti.';
-      }
-
-      _updateController.add({'strokeInvalid': true, 'message': errorMessage});
+    // Save current trace to allTraces if it has points
+    if (currentTrace.isNotEmpty) {
+      allTraces.add(List.from(currentTrace));
+      print('💾 Saved trace ${allTraces.length} with ${currentTrace.length} points');
     }
 
-    // Clear trace
+    // Clear current trace for next stroke
     currentTrace.clear();
 
-    // Hide feedback after 2 seconds
-    Future.delayed(Duration(seconds: 2), () {
+    // Just stop tracing, don't validate automatically
+    // User must press "Cek" button to validate
+    _updateController.add({
+      'tracingStopped': true,
+      'totalTraces': allTraces.length,
+    });
+  }
+
+  // Manual validation method - called when user presses "Cek" button
+  Future<void> validateTracing() async {
+    if (currentLetterData == null) {
+      _updateController.add({
+        'strokeInvalid': true,
+        'message': 'Data huruf belum dimuat.',
+      });
+      return;
+    }
+
+    // Check if user has made any traces
+    if (allTraces.isEmpty && currentTrace.isEmpty) {
+      _updateController.add({
+        'strokeInvalid': true,
+        'message': 'Silakan trace huruf terlebih dahulu.',
+      });
+      return;
+    }
+
+    double coverage = _calculateDashedPathCoverage();
+    const double requiredCoverage = 1.0; // 100% coverage required!
+
+    print(
+      'Validating tracing: ${(coverage * 100).toStringAsFixed(1)}% coverage',
+    );
+
+    if (coverage >= requiredCoverage) {
+      // Perfect tracing!
+      await _playSuccessSound(currentLetter);
+      _updateController.add({
+        'letterCompleted': true,
+        'coverage': coverage,
+        'message': 'Sempurna! Huruf berhasil diselesaikan dengan benar.',
+      });
+    } else {
+      // Need better coverage
+      String errorMessage = 'Tracing belum lengkap. ';
+      if (coverage < 0.3) {
+        errorMessage += 'Trace semua bagian huruf termasuk titik-titiknya.';
+      } else if (coverage < 0.7) {
+        errorMessage += 'Hampir benar, lengkapi bagian yang terlewat.';
+      } else {
+        errorMessage += 'Sedikit lagi, pastikan semua bagian ter-trace.';
+      }
+
+      _updateController.add({
+        'strokeInvalid': true,
+        'coverage': coverage,
+        'message': errorMessage,
+      });
+    }
+
+    // Hide feedback after 3 seconds
+    Future.delayed(Duration(seconds: 3), () {
       _updateController.add({'feedbackHidden': true});
     });
   }
 
-  Future<bool> _validateCurrentStroke() async {
-    if (currentLetterData == null ||
-        canvasSize == null ||
-        currentTrace.length < 2) {
-      return false;
+  // Calculate coverage percentage for dashed paths
+  double _calculateDashedPathCoverage() {
+    if (currentLetterData == null || canvasSize == null) {
+      return 0.0;
     }
 
-    // Get target points for current stroke
-    final currentStroke = currentStrokeIndex + 1; // SVG strokes are 1-indexed
-    final targetPoints =
-        currentLetterData!.pathPoints
-            .where((point) => point.strokeOrder == currentStroke)
-            .toList();
+    // Combine all traces (completed + current)
+    List<Offset> combinedTrace = [];
+    for (final trace in allTraces) {
+      combinedTrace.addAll(trace);
+    }
+    combinedTrace.addAll(currentTrace);
 
-    if (targetPoints.isEmpty) return false;
-
-    // Convert normalized coordinates to canvas coordinates
-    final canvasTargetPoints =
-        targetPoints
-            .map(
-              (point) => Offset(
-                point.position.dx * canvasSize!.width,
-                point.position.dy * canvasSize!.height,
-              ),
-            )
-            .toList();
-
-    // For single path tracing, use more flexible validation
-    // Check if it's a dot (single point)
-    if (targetPoints.length == 1) {
-      return _validateDot(canvasTargetPoints.first);
+    if (combinedTrace.length < 5) {
+      return 0.0;
     }
 
-    // Validate path tracing
-    return _validatePath(canvasTargetPoints);
-  }
+    // Get all dashed path points (unified tracing)
+    final allTargetPoints = currentLetterData!.pathPoints;
+    if (allTargetPoints.isEmpty) return 0.0;
 
-  bool _validateDot(Offset targetDot) {
-    // For dots, check if user touched near the target position
-    for (Offset tracePoint in currentTrace) {
-      double distance = (tracePoint - targetDot).distance;
-      if (distance <= dotTolerance) {
-        return true;
-      }
-    }
-    return false;
-  }
+    // Get SVG viewBox size
+    final viewBox = currentLetterData!.viewBox;
+    
+    // Calculate scale to fit canvas while maintaining aspect ratio (same as rendering)
+    final scaleX = canvasSize!.width / viewBox.width;
+    final scaleY = canvasSize!.height / viewBox.height;
+    final scale = scaleX < scaleY ? scaleX : scaleY;
+    
+    // Calculate offset to center (same as rendering)
+    final offsetX = (canvasSize!.width - (viewBox.width * scale)) / 2;
+    final offsetY = (canvasSize!.height - (viewBox.height * scale)) / 2;
 
-  bool _validatePath(List<Offset> targetPath) {
-    if (targetPath.length < 2 || currentTrace.length < 10)
-      return false; // Minimum 10 points
+    // Convert normalized coordinates to canvas coordinates with proper transformation
+    final canvasTargetPoints = allTargetPoints.map((point) {
+      // SVG coordinates (normalized in pathPoints are already in viewBox space)
+      final svgX = point.position.dx * viewBox.width;
+      final svgY = point.position.dy * viewBox.height;
+      
+      // Apply same transformation as rendering
+      final canvasX = (svgX * scale) + offsetX;
+      final canvasY = (svgY * scale) + offsetY;
+      
+      return Offset(canvasX, canvasY);
+    }).toList();
 
-    // Calculate expected trace length
-    double targetPathLength = _calculatePathLength(targetPath);
-    double userTraceLength = _calculatePathLength(currentTrace);
+    // Calculate how many target points are "covered" by combined user traces
+    int coveredPoints = 0;
+    const double coverageRadius = 30.0; // Distance tolerance for coverage
 
-    print('Target path length: ${targetPathLength.toStringAsFixed(1)}');
-    print('User trace length: ${userTraceLength.toStringAsFixed(1)}');
+    for (Offset targetPoint in canvasTargetPoints) {
+      bool pointCovered = false;
 
-    // 1. Check trace length - must be at least 60% of target path length
-    double lengthRatio = userTraceLength / targetPathLength;
-    if (lengthRatio < 0.6) {
-      print(
-        'Trace too short: ${(lengthRatio * 100).toStringAsFixed(1)}% of target',
-      );
-      return false;
-    }
-
-    // 2. Check start and end positions (stricter)
-    double startDistance = (currentTrace.first - targetPath.first).distance;
-    double endDistance = (currentTrace.last - targetPath.last).distance;
-
-    if (startDistance > pathTolerance || endDistance > pathTolerance) {
-      print(
-        'Start/end position validation failed: start=$startDistance, end=$endDistance',
-      );
-      return false;
-    }
-
-    // 3. Check path coverage - more comprehensive
-    int matchedPoints = 0;
-    int sampleCount = (currentTrace.length / 3).round().clamp(10, 30);
-
-    for (int i = 0; i < sampleCount; i++) {
-      int traceIndex = (i * currentTrace.length / sampleCount).round();
-      if (traceIndex >= currentTrace.length) continue;
-
-      Offset tracePoint = currentTrace[traceIndex];
-
-      // Find closest point in target path
-      double minDistance = double.infinity;
-      for (Offset targetPoint in targetPath) {
+      // Check against combined traces
+      for (Offset tracePoint in combinedTrace) {
         double distance = (tracePoint - targetPoint).distance;
-        if (distance < minDistance) {
-          minDistance = distance;
+        if (distance <= coverageRadius) {
+          pointCovered = true;
+          break;
         }
       }
 
-      // Stricter tolerance
-      if (minDistance <= pathTolerance * 1.2) {
-        matchedPoints++;
+      if (pointCovered) {
+        coveredPoints++;
       }
     }
 
-    // Require at least 75% of points to match (stricter)
-    double matchRatio = matchedPoints / sampleCount;
-    print(
-      'Path validation: $matchedPoints/$sampleCount matched (${(matchRatio * 100).toStringAsFixed(1)}%)',
-    );
-
-    return matchRatio >= 0.75; // 75% match required (stricter)
-  }
-
-  bool _isLetterCompleted() {
-    return completedStrokes.every((completed) => completed);
+    double coverageRatio = coveredPoints / canvasTargetPoints.length;
+    
+    print('🎯 Coverage: ${(coverageRatio * 100).toStringAsFixed(1)}% ($coveredPoints/${canvasTargetPoints.length} points)');
+    print('📝 Total traces: ${allTraces.length} completed + current (${currentTrace.length} points)');
+    print('📐 Scale: $scale, Offset: ($offsetX, $offsetY)');
+    
+    return coverageRatio;
   }
 
   Future<void> _playSuccessSound(String letter) async {
@@ -291,13 +277,8 @@ class SVGTracingService {
   List<Offset> getCurrentStrokeGuidePoints() {
     if (currentLetterData == null || canvasSize == null) return [];
 
-    final currentStroke = currentStrokeIndex + 1;
-    final targetPoints =
-        currentLetterData!.pathPoints
-            .where((point) => point.strokeOrder == currentStroke)
-            .toList();
-
-    return targetPoints
+    // Return all dashed path points since we're using coverage-based tracing
+    return currentLetterData!.pathPoints
         .map(
           (point) => Offset(
             point.position.dx * canvasSize!.width,
@@ -312,13 +293,10 @@ class SVGTracingService {
 
   void resetTracing() {
     currentTrace.clear();
-    currentStrokeIndex = 0;
+    allTraces.clear();
     isTracing = false;
-    completedStrokes = List.filled(
-      currentLetterData?.strokeOrder.length ?? 0,
-      false,
-    );
     _updateController.add({'tracingReset': true});
+    print('🔄 Tracing reset - all traces cleared');
   }
 
   void initialize(String letter) {
@@ -341,23 +319,19 @@ class SVGTracingService {
   }
 
   Future<void> checkTracing(String letter) async {
-    if (_isLetterCompleted()) {
+    // Check coverage instead of stroke completion
+    double coverage = _calculateDashedPathCoverage();
+    if (coverage >= 0.7) {
       await _playSuccessSound(letter);
     }
   }
 
-  // Methods for canvas rendering
+  // Methods for canvas rendering - returns separated stroke groups
   List<Offset> getCurrentStrokePoints() {
     if (currentLetterData == null || canvasSize == null) return [];
 
-    final currentStroke = currentStrokeIndex + 1;
-    final targetPoints =
-        currentLetterData!.pathPoints
-            .where((point) => point.strokeOrder == currentStroke)
-            .toList();
-
-    // Convert to canvas coordinates
-    return targetPoints
+    // Return all path points (each <g> group is separate)
+    return currentLetterData!.pathPoints
         .map(
           (point) => Offset(
             point.position.dx * canvasSize!.width,
@@ -365,6 +339,24 @@ class SVGTracingService {
           ),
         )
         .toList();
+  }
+
+  // Get stroke groups separately (for debugging)
+  Map<int, List<Offset>> getStrokeGroups() {
+    if (currentLetterData == null || canvasSize == null) return {};
+
+    Map<int, List<Offset>> groups = {};
+
+    for (final point in currentLetterData!.pathPoints) {
+      final canvasPoint = Offset(
+        point.position.dx * canvasSize!.width,
+        point.position.dy * canvasSize!.height,
+      );
+
+      groups.putIfAbsent(point.strokeOrder, () => []).add(canvasPoint);
+    }
+
+    return groups;
   }
 
   List<Offset> getAllGuidePoints() {
@@ -398,40 +390,20 @@ class SVGTracingService {
   }
 
   List<Offset> getCompletedStrokePoints() {
-    if (currentLetterData == null || canvasSize == null) return [];
-
-    List<Offset> completed = [];
-
-    for (int i = 0; i < currentStrokeIndex; i++) {
-      final strokeOrder = i + 1;
-      final points =
-          currentLetterData!.pathPoints
-              .where((point) => point.strokeOrder == strokeOrder)
-              .toList();
-
-      completed.addAll(
-        points.map(
-          (point) => Offset(
-            point.position.dx * canvasSize!.width,
-            point.position.dy * canvasSize!.height,
-          ),
-        ),
-      );
-    }
-
-    return completed;
+    // For coverage-based tracing, we don't track completed strokes
+    // Return empty list to maintain compatibility
+    return [];
   }
 
-  // Helper method to calculate path length
-  double _calculatePathLength(List<Offset> path) {
-    if (path.length < 2) return 0.0;
-
-    double totalLength = 0.0;
-    for (int i = 1; i < path.length; i++) {
-      totalLength += (path[i] - path[i - 1]).distance;
-    }
-
-    return totalLength;
+  // Reset/clear all traces untuk mengulang dari awal
+  void clearAllTraces() {
+    currentTrace.clear();
+    allTraces.clear();
+    _updateController.add({
+      'tracesCleared': true,
+      'message': 'Tracing direset, silakan mulai lagi.',
+    });
+    print('🔄 All traces cleared');
   }
 
   void dispose() {
