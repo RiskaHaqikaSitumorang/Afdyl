@@ -78,7 +78,7 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
 
   void _onPanStart(int index) {
     _draggedCardIndex = index;
-    _draggedCardPosition = Offset(0, -cardSize);
+    _draggedCardPosition = Offset(0, -cardSize - 60);
     _gameController.isDragging[index] = true;
     setState(() {});
   }
