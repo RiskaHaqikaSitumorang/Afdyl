@@ -498,7 +498,7 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                   ),
 
                 // SPACER - pushes flashcards to bottom
-                Spacer(),
+                // Spacer(),
 
                 // FLASHCARDS SECTION
                 Column(
@@ -524,7 +524,7 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                         },
                       ),
                     ),
-                    SizedBox(height: 24),
+                    SizedBox(height: 16),
                     Column(
                       children: [
                         Container(

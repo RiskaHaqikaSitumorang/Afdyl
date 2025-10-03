@@ -5,18 +5,25 @@ import 'routes/app_routes.dart';
 import 'constants/app_colors.dart';
 
 void main() async {
+  print('🚀🚀🚀 [MAIN] APP STARTING 🚀🚀🚀');
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
+  print('[MAIN] Loading environment variables...');
   await dotenv.load();
+  print('[MAIN] ✅ Environment variables loaded');
 
   // Initialize Supabase
+  print('[MAIN] Initializing Supabase...');
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  print('[MAIN] ✅ Supabase initialized');
 
+  print('[MAIN] Running app...');
   runApp(const MyApp());
+  print('[MAIN] ✅ App started');
 }
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
