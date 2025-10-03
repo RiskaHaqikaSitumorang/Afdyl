@@ -39,7 +39,7 @@ class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
       final Uint8List bytes = data.buffer.asUint8List();
       final ui.Codec codec = await ui.instantiateImageCodec(bytes);
       final ui.FrameInfo frameInfo = await codec.getNextFrame();
-      
+
       if (mounted) {
         setState(() {
           _backgroundImage = frameInfo.image;
@@ -53,8 +53,8 @@ class _SVGTracingCanvasState extends State<SVGTracingCanvas> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 350,
-      height: 350,
+      width: 400, // Fixed width (same as parent)
+      height: 400, // Fixed height (same as parent)
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -139,21 +139,25 @@ class SVGTracingPainter extends CustomPainter {
 
   void _drawBackground(Canvas canvas, Size size) {
     // Draw white background
-    final backgroundPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
+    final backgroundPaint =
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      backgroundPaint,
+    );
 
     // Draw PNG image as background if available
     if (backgroundImage != null && tracingService.currentLetterData != null) {
       // Use SVG viewBox as reference for consistent scaling
       final viewBox = tracingService.currentLetterData!.viewBox;
-      
+
       // Calculate scale using viewBox (same as SVG paths)
       final scaleX = size.width / viewBox.width;
       final scaleY = size.height / viewBox.height;
       final scale = scaleX < scaleY ? scaleX : scaleY;
-      
+
       // Calculate offset to center (same as SVG paths)
       final scaledWidth = viewBox.width * scale;
       final scaledHeight = viewBox.height * scale;
@@ -163,11 +167,19 @@ class SVGTracingPainter extends CustomPainter {
       final imageWidth = backgroundImage!.width.toDouble();
       final imageHeight = backgroundImage!.height.toDouble();
       final srcRect = Rect.fromLTWH(0, 0, imageWidth, imageHeight);
-      final dstRect = Rect.fromLTWH(offsetX, offsetY, scaledWidth, scaledHeight);
+      final dstRect = Rect.fromLTWH(
+        offsetX,
+        offsetY,
+        scaledWidth,
+        scaledHeight,
+      );
 
-      final paint = Paint()
-        ..filterQuality = FilterQuality.high
-        ..color = Colors.white.withOpacity(0.4); // Semi-transparent so dashed lines are visible
+      final paint =
+          Paint()
+            ..filterQuality = FilterQuality.high
+            ..color = Colors.white.withOpacity(
+              0.4,
+            ); // Semi-transparent so dashed lines are visible
       canvas.drawImageRect(backgroundImage!, srcRect, dstRect, paint);
     }
   }
@@ -175,42 +187,47 @@ class SVGTracingPainter extends CustomPainter {
   void _drawSeparatedDashedPaths(Canvas canvas, Size size) {
     if (tracingService.currentLetterData == null) return;
 
-    final pathPaint = Paint()
-      ..color = Colors.grey[400]!
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final pathPaint =
+        Paint()
+          ..color = Colors.grey[400]!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.0
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     // Get SVG viewBox size
     final viewBox = tracingService.currentLetterData!.viewBox;
-    
+
     // Calculate scale to fit canvas while maintaining aspect ratio
     final scaleX = size.width / viewBox.width;
     final scaleY = size.height / viewBox.height;
     final scale = scaleX < scaleY ? scaleX : scaleY;
-    
+
     // Calculate offset to center the paths
     final offsetX = (size.width - (viewBox.width * scale)) / 2;
     final offsetY = (size.height - (viewBox.height * scale)) / 2;
 
     // Save canvas state
     canvas.save();
-    
+
     // Apply transformation: translate to center, then scale
     canvas.translate(offsetX, offsetY);
     canvas.scale(scale, scale);
 
     // Draw each group separately
-    for (int i = 0; i < tracingService.currentLetterData!.separatedPaths.length; i++) {
+    for (
+      int i = 0;
+      i < tracingService.currentLetterData!.separatedPaths.length;
+      i++
+    ) {
       final groupPaths = tracingService.currentLetterData!.separatedPaths[i];
-      
+
       // Draw each path in the group
       for (final path in groupPaths) {
         _drawDashedPath(canvas, path, pathPaint);
       }
     }
-    
+
     // Restore canvas state
     canvas.restore();
   }
@@ -234,12 +251,14 @@ class SVGTracingPainter extends CustomPainter {
   }
 
   void _drawAllUserTraces(Canvas canvas, Size size) {
-    final tracePaint = Paint()
-      ..color = Colors.red[600]!
-      ..strokeWidth = 6.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+    final tracePaint =
+        Paint()
+          ..color = Colors.red[600]!
+          ..strokeWidth =
+              12.0 // ← INCREASED from 6.0 to 12.0
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
 
     // Draw all completed traces (from allTraces)
     for (final trace in tracingService.allTraces) {
@@ -262,31 +281,6 @@ class SVGTracingPainter extends CustomPainter {
         path.lineTo(currentTrace[i].dx, currentTrace[i].dy);
       }
       canvas.drawPath(path, tracePaint);
-    }
-  }
-
-  // Debug method - uncomment dalam paint() untuk melihat target points
-  void _drawDebugTargetPoints(Canvas canvas, Size size) {
-    if (tracingService.currentLetterData == null) return;
-
-    final viewBox = tracingService.currentLetterData!.viewBox;
-    final scaleX = size.width / viewBox.width;
-    final scaleY = size.height / viewBox.height;
-    final scale = scaleX < scaleY ? scaleX : scaleY;
-    final offsetX = (size.width - (viewBox.width * scale)) / 2;
-    final offsetY = (size.height - (viewBox.height * scale)) / 2;
-
-    final pointPaint = Paint()
-      ..color = Colors.blue.withOpacity(0.5)
-      ..style = PaintingStyle.fill;
-
-    for (final point in tracingService.currentLetterData!.pathPoints) {
-      final svgX = point.position.dx * viewBox.width;
-      final svgY = point.position.dy * viewBox.height;
-      final canvasX = (svgX * scale) + offsetX;
-      final canvasY = (svgY * scale) + offsetY;
-      
-      canvas.drawCircle(Offset(canvasX, canvasY), 2, pointPaint);
     }
   }
 
