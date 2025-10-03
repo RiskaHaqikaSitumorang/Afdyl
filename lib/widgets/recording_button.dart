@@ -54,7 +54,15 @@ class RecordingButton extends StatelessWidget {
               ),
               // Recording Button
               GestureDetector(
-                onTap: isProcessing ? null : onTap,
+                onTap:
+                    isProcessing
+                        ? null
+                        : () {
+                          print(
+                            '[RecordingButton] 🔘 Button ditekan! isListening: $isListening, isProcessing: $isProcessing',
+                          );
+                          onTap();
+                        },
                 child: Container(
                   width: double.infinity,
                   height: 60,
