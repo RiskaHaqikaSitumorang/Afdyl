@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/svg_tracing_canvas.dart';
 import '../services/svg_tracing_service.dart';
@@ -20,11 +21,13 @@ class HijaiyahTracingDetailPage extends StatefulWidget {
 
 class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
   final SVGTracingService _tracingService = SVGTracingService();
-  final ScrollController _scrollController = ScrollController();
   bool isLetterCompleted = false;
 
   // State untuk menyimpan feedback terakhir
   Map<String, dynamic>? _lastFeedback;
+
+  // Timer untuk auto-hide feedback
+  Timer? _feedbackTimer;
 
   @override
   void initState() {
@@ -53,8 +56,11 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
         setState(() {
           _lastFeedback = data; // Simpan feedback
         });
-        // Auto scroll ke bawah untuk melihat feedback
-        _scrollToBottom();
+        // Auto-hide feedback after 3 seconds
+        // Exception: Jangan hide "Letter Completed" karena ini achievement
+        if (data['letterCompleted'] != true) {
+          _startFeedbackTimer();
+        }
       }
     });
 
@@ -63,22 +69,24 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
     });
   }
 
-  void _scrollToBottom() {
-    // Delay sedikit untuk memastikan widget sudah di-render
-    Future.delayed(Duration(milliseconds: 300), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 500),
-          curve: Curves.easeOut,
-        );
+  /// Start timer untuk auto-hide feedback setelah 3 detik
+  void _startFeedbackTimer() {
+    // Cancel timer sebelumnya jika ada
+    _feedbackTimer?.cancel();
+
+    // Start timer baru
+    _feedbackTimer = Timer(Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _lastFeedback = null; // Hide feedback
+        });
       }
     });
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _feedbackTimer?.cancel(); // Cancel timer saat dispose
     _tracingService.dispose();
     super.dispose();
   }
@@ -251,205 +259,223 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: ClampingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Letter Display - COMPACT VERSION
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Letter
-                      Text(
-                        widget.letter,
-                        style: TextStyle(
-                          fontSize: 50,
-                          fontFamily: 'Maqroo',
-                          fontWeight: FontWeight.bold,
-                          color:
-                              isLetterCompleted
-                                  ? Colors.green[600]
-                                  : AppColors.softBlack,
+        child: Stack(
+          children: [
+            // Main content - NO SCROLL
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Letter Display - COMPACT VERSION
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Letter
+                        Text(
+                          widget.letter,
+                          style: TextStyle(
+                            fontSize: 50,
+                            fontFamily: 'Maqroo',
+                            fontWeight: FontWeight.bold,
+                            color:
+                                isLetterCompleted
+                                    ? Colors.green[600]
+                                    : AppColors.softBlack,
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      // Pronunciation
-                      Text(
-                        widget.pronunciation,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.softBlack,
+                        SizedBox(width: 12),
+                        // Pronunciation
+                        Text(
+                          widget.pronunciation,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.softBlack,
+                          ),
                         ),
-                      ),
-                      // Completion icon (only when completed)
-                      if (isLetterCompleted) ...[
-                        SizedBox(width: 8),
+                        // Completion icon (only when completed)
+                        if (isLetterCompleted) ...[
+                          SizedBox(width: 8),
+                          Icon(
+                            Icons.check_circle,
+                            color: Colors.green[600],
+                            size: 22,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Instructions - COMPACT
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue[200]!),
+                    ),
+                    child: Row(
+                      children: [
                         Icon(
-                          Icons.check_circle,
-                          color: Colors.green[600],
-                          size: 22,
+                          Icons.info_outline,
+                          color: Colors.blue[600],
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Trace semua bagian huruf (termasuk titik-titik) lalu tekan tombol "Cek".',
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
 
-                // Instructions - COMPACT
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.blue[200]!),
-                  ),
-                  child: Row(
+                  SizedBox(height: 16),
+                  Row(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.blue[600],
-                        size: 18,
+                      // Tombol Reset
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _tracingService.resetTracing();
+                            setState(() {
+                              isLetterCompleted = false;
+                              _lastFeedback = null;
+                            });
+                          },
+                          icon: Icon(Icons.refresh, size: 18),
+                          label: Text('Reset', style: TextStyle(fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
                       SizedBox(width: 8),
+
+                      // Tombol Sound
                       Expanded(
-                        child: Text(
-                          'Trace semua bagian huruf (termasuk titik-titik) lalu tekan tombol "Cek".',
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontWeight: FontWeight.w500,
-                            fontSize: 13,
+                        child: ElevatedButton.icon(
+                          onPressed:
+                              () => _tracingService.playSound(widget.letter),
+                          icon: Icon(Icons.volume_up, size: 18),
+                          label: Text('Sound', style: TextStyle(fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.tertiary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
 
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    // Tombol Reset
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          _tracingService.resetTracing();
-                          setState(() {
-                            isLetterCompleted = false;
-                            _lastFeedback = null;
-                          });
-                        },
-                        icon: Icon(Icons.refresh, size: 18),
-                        label: Text('Reset', style: TextStyle(fontSize: 13)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
+                  SizedBox(height: 16),
+
+                  // Tracing Canvas - DYNAMIC HEIGHT (45% dari tinggi layar)
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                                isLetterCompleted
+                                    ? Colors.green.withOpacity(0.3)
+                                    : Colors.black12,
+                            blurRadius: isLetterCompleted ? 12 : 8,
+                            offset: Offset(0, 4),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        ],
+                      ),
+                      child: SVGTracingCanvas(
+                        letter: widget.letter,
+                        tracingService: _tracingService,
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // Tombol Cek
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _tracingService.validateTracing(),
+                          icon: Icon(Icons.check_circle, size: 18),
+                          label: Text('Cek', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 8),
+                    ],
+                  ),
 
-                    // Tombol Sound
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed:
-                            () => _tracingService.playSound(widget.letter),
-                        icon: Icon(Icons.volume_up, size: 18),
-                        label: Text('Sound', style: TextStyle(fontSize: 13)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.tertiary,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  SizedBox(height: 16),
+                ],
+              ),
+            ),
 
-                SizedBox(height: 16),
-
-                // Tracing Canvas - FIXED SIZE
-                Center(
+            // Floating Feedback Widget - Fixed position di tengah layar
+            if (_lastFeedback != null)
+              Positioned(
+                bottom: 100, // Posisi dari bawah
+                left: 16,
+                right: 16,
+                child: Center(
                   child: Container(
-                    width: double.infinity,
-                    height: 360,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              isLetterCompleted
-                                  ? Colors.green.withOpacity(0.3)
-                                  : Colors.black12,
-                          blurRadius: isLetterCompleted ? 12 : 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: SVGTracingCanvas(
-                      letter: widget.letter,
-                      tracingService: _tracingService,
+                    constraints: BoxConstraints(maxWidth: 350),
+                    child: Material(
+                      elevation: 12,
+                      borderRadius: BorderRadius.circular(12),
+                      shadowColor: Colors.black.withOpacity(0.3),
+                      child: AnimatedOpacity(
+                        opacity: _lastFeedback != null ? 1.0 : 0.0,
+                        duration: Duration(milliseconds: 300),
+                        child: _buildFeedbackWidget(),
+                      ),
                     ),
                   ),
                 ),
-
-                SizedBox(height: 16),
-
-                // Progress Feedback
-                _buildFeedbackWidget(),
-
-                SizedBox(height: 10),
-
-                // Tombol Cek
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _tracingService.validateTracing(),
-                        icon: Icon(Icons.check_circle, size: 18),
-                        label: Text('Cek', style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: 16),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );
