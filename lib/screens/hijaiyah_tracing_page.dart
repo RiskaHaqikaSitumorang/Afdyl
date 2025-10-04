@@ -73,6 +73,7 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
                 ),
               ),
             ),
+            SizedBox(height: 20.0),
           ],
         ),
       ),
