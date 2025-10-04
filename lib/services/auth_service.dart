@@ -110,7 +110,7 @@ class AuthService {
             .limit(1);
 
         if (userQuery.isEmpty) {
-          throw Exception('Nama pengguna tidak ditemukan');
+          throw Exception('Email tidak ditemukan');
         }
 
         email = userQuery.first['email'];

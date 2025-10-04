@@ -16,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _usernameError;
   String? _passwordError;
+  String? _loginError; // Error untuk invalid credentials
   final AuthService _authService = AuthService();
 
   @override
@@ -29,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _usernameError = null;
       _passwordError = null;
+      _loginError = null; // Clear login error
       _isLoading = true;
     });
 
@@ -37,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (usernameOrEmail.isEmpty) {
       setState(() {
-        _usernameError = 'Nama pengguna atau email tidak boleh kosong';
+        _usernameError = 'Email tidak boleh kosong';
         _isLoading = false;
       });
       return;
@@ -62,8 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } catch (e) {
       setState(() {
-        String message = e.toString().replaceFirst('Exception: ', '');
-        if (message.contains('pengguna') || message.contains('email')) {
+        String message = e.toString().replaceAll('Exception: ', '');
+        if (message.contains('Invalid login credentials')) {
+          // Set error khusus untuk invalid credentials
+          _loginError = "Email atau password salah. Silakan coba lagi.";
+        } else if (message.contains('pengguna') || message.contains('email')) {
           _usernameError = message;
         } else {
           _passwordError = message;
@@ -134,11 +139,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(height: 80),
                     CustomTextField(
                       controller: _usernameController,
-                      hintText: 'Nama pengguna atau Email',
+                      hintText: 'Email pengguna',
                       prefixIcon: Icons.person_outline,
                       errorText: _usernameError,
                       onChanged:
-                          (value) => setState(() => _usernameError = null),
+                          (value) => setState(() {
+                            _usernameError = null;
+                            _loginError =
+                                null; // Clear login error saat mengetik
+                          }),
                     ),
                     SizedBox(height: 20),
                     CustomTextField(
@@ -148,7 +157,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: !_isPasswordVisible,
                       errorText: _passwordError,
                       onChanged:
-                          (value) => setState(() => _passwordError = null),
+                          (value) => setState(() {
+                            _passwordError = null;
+                            _loginError =
+                                null; // Clear login error saat mengetik
+                          }),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isPasswordVisible
@@ -166,6 +179,44 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                       ),
                     ),
+                    // Error message untuk invalid login credentials
+                    if (_loginError != null) ...[
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.red[300]!,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red[700],
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _loginError!,
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerRight,

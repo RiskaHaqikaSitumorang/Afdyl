@@ -47,7 +47,7 @@ class _HijaiyahTracingDetailPageState extends State<HijaiyahTracingDetailPage> {
       }
 
       // Update feedback
-      if (data.containsKey('strokeCompleted') ||
+      if (data.containsKey('letterCompleted') ||
           data.containsKey('strokeInvalid') ||
           data.containsKey('pathInvalid')) {
         setState(() {
