@@ -389,33 +389,34 @@ class _DashboardScreenState extends State<DashboardScreen>
                           const SizedBox(height: 8),
                           Container(
                             width: double.infinity,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Opacity(
-                                  opacity: 0.5,
-                                  child: Image.asset(
-                                    'assets/images/ic_point.png',
-                                    width: 24,
-                                    height: 24,
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    location,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: AppColors.blackPrimary.withOpacity(
-                                        0.5,
-                                      ),
-                                      fontFamily: 'OpenDyslexic',
+                            child: Expanded(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Opacity(
+                                    opacity: 0.5,
+                                    child: Image.asset(
+                                      'assets/images/ic_point.png',
+                                      width: 24,
+                                      height: 24,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      location,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: AppColors.blackPrimary
+                                            .withOpacity(0.5),
+                                        fontFamily: 'OpenDyslexic',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(height: 50),

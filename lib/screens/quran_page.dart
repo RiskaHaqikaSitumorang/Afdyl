@@ -188,7 +188,7 @@ class QuranPageState extends State<QuranPage>
                     height: 40,
                     margin: const EdgeInsets.only(top: 8.0),
                     decoration: BoxDecoration(
-                      color: AppColors.tertiary.withOpacity(0.4),
+                      color: AppColors.whiteSoft,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -567,7 +567,7 @@ class QuranPageState extends State<QuranPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.tertiary.withOpacity(0.2),
+        color: AppColors.whiteSoft,
         borderRadius: BorderRadius.circular(25),
       ),
       child: ListTile(

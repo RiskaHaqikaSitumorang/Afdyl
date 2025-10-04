@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:afdyl/services/auth_service.dart';
@@ -339,19 +340,48 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFEF3),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 80, // Increased height to accommodate the extra spacing
+        leading: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+          decoration: BoxDecoration(
+            color: AppColors.tertiary.withOpacity(0.4),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.chevron_left,
+              color: AppColors.tertiary,
+              size: 25,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            "Profil Anda",
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: Colors.green),
-              ),
-              const SizedBox(height: 10),
-
               // Loading state
               if (_isLoading)
                 const Expanded(
@@ -361,7 +391,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.green,
+                            AppColors.tertiary,
                           ),
                         ),
                         SizedBox(height: 16),
