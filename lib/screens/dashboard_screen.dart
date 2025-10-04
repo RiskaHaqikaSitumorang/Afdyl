@@ -3,9 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
 import '../routes/app_routes.dart';
 import '../widgets/page_transitions.dart';
 import '../screens/profile_page.dart';
@@ -30,6 +28,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   Map<String, dynamic>? lastReadData;
   String location = "Mendapatkan lokasi...";
   late Timer _timer;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   // Prayer times state
   PrayerTimes? prayerTimes;
@@ -39,10 +39,33 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _startTimeUpdate();
-    _getCurrentLocation();
-    _loadLastReadData();
+    print('[Dashboard] 🎬 initState called');
+    try {
+      WidgetsBinding.instance.addObserver(this);
+      _startTimeUpdate();
+      _safeAsyncInit();
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error in initState: $e');
+      print('[Dashboard] Stack: $stack');
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  // Safe async initialization
+  Future<void> _safeAsyncInit() async {
+    try {
+      print('[Dashboard] 🔄 Starting async initialization...');
+      await Future.wait([_getCurrentLocation(), _loadLastReadData()]);
+      print('[Dashboard] ✅ Async initialization complete');
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error in async init: $e');
+      print('[Dashboard] Stack: $stack');
+      // Don't set error state, just log it
+      // App can continue with default values
+    }
   }
 
   @override
@@ -103,19 +126,31 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _loadLastReadData() async {
-    print('Loading last read data...');
-    final data = await LastReadService.getLastRead();
-    print('Last read data: $data');
-    setState(() {
-      lastReadData = data;
-      if (data != null) {
-        lastRead = LastReadService.formatLastReadText(data);
-        print('Formatted last read: $lastRead');
-      } else {
-        lastRead = "Belum ada bacaan";
-        print('No last read data found');
+    try {
+      print('[Dashboard] 📖 Loading last read data...');
+      final data = await LastReadService.getLastRead();
+      print('[Dashboard] Last read data: $data');
+      if (mounted) {
+        setState(() {
+          lastReadData = data;
+          if (data != null) {
+            lastRead = LastReadService.formatLastReadText(data);
+            print('[Dashboard] ✅ Formatted last read: $lastRead');
+          } else {
+            lastRead = "Belum ada bacaan";
+            print('[Dashboard] ℹ️ No last read data found');
+          }
+        });
       }
-    });
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error loading last read: $e');
+      print('[Dashboard] Stack: $stack');
+      if (mounted) {
+        setState(() {
+          lastRead = "Belum ada bacaan";
+        });
+      }
+    }
   }
 
   void _onLastReadTap() {
@@ -146,37 +181,82 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _getCurrentLocation() async {
+    print('[Dashboard] Getting current location...');
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          setState(() {
-            location = "Izin lokasi ditolak";
-            isLoadingPrayerTimes = false; // stop spinner if user denies
-          });
-          return;
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('[Dashboard] Location services are disabled');
         setState(() {
-          location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
-          isLoadingPrayerTimes = false; // stop spinner if permanently denied
+          location = "Layanan lokasi tidak aktif";
+          isLoadingPrayerTimes = false;
         });
+        // Use default location (Jakarta) for prayer times
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
         return;
       }
 
+      LocationPermission permission = await Geolocator.checkPermission();
+      print('[Dashboard] Location permission status: $permission');
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        print('[Dashboard] Permission request result: $permission');
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            location = "Jakarta, Indonesia"; // Default location
+            isLoadingPrayerTimes = false;
+          });
+          // Use default location
+          await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('[Dashboard] Permission denied forever');
+        setState(() {
+          location = "Jakarta, Indonesia"; // Default location
+          isLoadingPrayerTimes = false;
+        });
+        // Use default location
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+        return;
+      }
+
+      print('[Dashboard] Getting position...');
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
+        desiredAccuracy:
+            LocationAccuracy.medium, // Changed to medium for faster response
+        timeLimit: Duration(seconds: 15), // Increased timeout
+      ).timeout(
+        Duration(seconds: 15),
+        onTimeout: () {
+          print('[Dashboard] Position timeout, using default');
+          setState(() {
+            location = "Jakarta, Indonesia";
+          });
+          throw TimeoutException('Location timeout');
+        },
+      );
+
+      print(
+        '[Dashboard] Position obtained: ${position.latitude}, ${position.longitude}',
       );
       await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
       await _fetchTodayPrayerTimes(position.latitude, position.longitude);
     } catch (e) {
+      print('[Dashboard] Error getting location: $e');
       setState(() {
-        location = "Gagal mendapatkan lokasi: $e";
-        isLoadingPrayerTimes = false; // ensure spinner stops on error
+        location = "Jakarta, Indonesia"; // Fallback to default
+        isLoadingPrayerTimes = false;
       });
+      // Use default location for prayer times
+      try {
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+      } catch (prayerError) {
+        print('[Dashboard] Error fetching prayer times: $prayerError');
+      }
     }
   }
 
@@ -210,22 +290,37 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   Future<void> _fetchTodayPrayerTimes(double latitude, double longitude) async {
     try {
+      print('[Dashboard] 🕌 Fetching prayer times for: $latitude, $longitude');
       if (mounted) setState(() => isLoadingPrayerTimes = true);
-      final fetchedPrayerTimes = await _prayerService.fetchPrayerTimes(
-        latitude,
-        longitude,
-      );
-      setState(() {
-        prayerTimes = fetchedPrayerTimes;
-        isLoadingPrayerTimes = false;
-      });
-      // Update the header message using the newly loaded model
-      _updateNextPrayerMessageFromModel();
-    } catch (e) {
-      setState(() {
-        isLoadingPrayerTimes = false;
-      });
-      print('Error fetching prayer times: $e');
+
+      final fetchedPrayerTimes = await _prayerService
+          .fetchPrayerTimes(latitude, longitude)
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              print('[Dashboard] ⏱️ Prayer times fetch timeout');
+              throw TimeoutException('Prayer times timeout');
+            },
+          );
+
+      if (mounted) {
+        setState(() {
+          prayerTimes = fetchedPrayerTimes;
+          isLoadingPrayerTimes = false;
+        });
+        // Update the header message using the newly loaded model
+        _updateNextPrayerMessageFromModel();
+        print('[Dashboard] ✅ Prayer times loaded successfully');
+      }
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error fetching prayer times: $e');
+      print('[Dashboard] Stack: $stack');
+      if (mounted) {
+        setState(() {
+          isLoadingPrayerTimes = false;
+          prayerTime = 'Jadwal sholat tidak tersedia';
+        });
+      }
     }
   }
 
@@ -277,6 +372,58 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    print('[Dashboard] 🎨 Building widget tree...');
+
+    // Error boundary - if there's a critical error, show error screen
+    if (_hasError) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 64),
+                  SizedBox(height: 24),
+                  Text(
+                    'Terjadi Kesalahan',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    _errorMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _hasError = false;
+                        _errorMessage = '';
+                      });
+                      _safeAsyncInit();
+                    },
+                    child: Text('Coba Lagi'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.whiteSoft,
       body: SafeArea(
@@ -387,37 +534,33 @@ class _DashboardScreenState extends State<DashboardScreen>
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Container(
-                            width: double.infinity,
-                            child: Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Opacity(
-                                    opacity: 0.5,
-                                    child: Image.asset(
-                                      'assets/images/ic_point.png',
-                                      width: 24,
-                                      height: 24,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Flexible(
-                                    child: Text(
-                                      location,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: AppColors.blackPrimary
-                                            .withOpacity(0.5),
-                                        fontFamily: 'OpenDyslexic',
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Opacity(
+                                opacity: 0.5,
+                                child: Image.asset(
+                                  'assets/images/ic_point.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  location,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: AppColors.blackPrimary.withOpacity(
+                                      0.5,
+                                    ),
+                                    fontFamily: 'OpenDyslexic',
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 50),
                         ],
