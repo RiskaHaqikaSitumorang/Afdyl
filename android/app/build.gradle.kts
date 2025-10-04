@@ -27,7 +27,14 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug") 
+            signingConfig = signingConfigs.getByName("debug")
+            // Disable minification to check if that's the issue
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
