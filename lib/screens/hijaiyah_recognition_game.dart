@@ -467,39 +467,6 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
                 ),
                 SizedBox(height: 40),
 
-                // FEEDBACK
-                if (_gameController.showFeedback)
-                  AnimatedBuilder(
-                    animation: _feedbackAnimation,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: _feedbackAnimation.value,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _gameController.feedbackColor,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _gameController.feedbackMessage,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              fontFamily: 'OpenDyslexic',
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                // SPACER - pushes flashcards to bottom
-                // Spacer(),
-
                 // FLASHCARDS SECTION
                 Column(
                   children: [
@@ -576,6 +543,50 @@ class HijaiyahRecognitionGameState extends State<HijaiyahRecognitionGame>
 
             // Dragged card overlay - appears on top of everything
             if (_draggedCardIndex != null) _buildDraggedCardOverlay(),
+
+            // Floating Feedback Widget - Fixed position, tidak menggeser layout
+            if (_gameController.showFeedback)
+              Positioned(
+                top:
+                    MediaQuery.of(context).size.height *
+                    0.55, // Posisi di tengah-bawah
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: AnimatedBuilder(
+                    animation: _feedbackAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _feedbackAnimation.value,
+                        child: Material(
+                          elevation: 12,
+                          borderRadius: BorderRadius.circular(20),
+                          shadowColor: Colors.black.withOpacity(0.3),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _gameController.feedbackColor,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _gameController.feedbackMessage,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontFamily: 'OpenDyslexic',
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ),
