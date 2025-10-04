@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 /// Service untuk mengenali bacaan Al-Quran dari rekaman suara
 ///
@@ -109,9 +111,23 @@ class QuranSTTService {
       _speechEnabled = await _speechToText.initialize(
         onError: (error) {
           print('[QuranSTT] ❌ Error: ${error.toString()}');
+
+          // Handle specific errors dengan pesan yang lebih jelas
+          if (error.errorMsg.contains('timeout') ||
+              error.errorMsg.contains('speech_timeout')) {
+            print('[QuranSTT] ⏱️  TIMEOUT: Tidak ada suara terdeteksi');
+            _currentStatus = 'Timeout: Tidak ada suara terdeteksi. Coba lagi!';
+          } else if (error.errorMsg.contains('no-speech') ||
+              error.errorMsg.contains('no_speech')) {
+            print('[QuranSTT] 🔇 NO SPEECH: Tidak ada suara terdeteksi');
+            _currentStatus =
+                'Tidak ada suara terdeteksi. Pastikan microphone aktif!';
+          } else {
+            _currentStatus = 'Error: ${error.errorMsg}';
+          }
+
           _isListening = false;
           _isProcessing = false;
-          _currentStatus = 'Error: ${error.toString()}';
           _broadcastStatus();
         },
         onStatus: (status) {
@@ -125,6 +141,10 @@ class QuranSTTService {
                 '[QuranSTT] 🔄 Memulai pemrosesan teks: "$_recognizedText"',
               );
               _processRecognizedText();
+            } else {
+              print('[QuranSTT] ⚠️  Tidak ada teks yang dikenali');
+              _currentStatus = 'Tidak ada suara terdeteksi';
+              _broadcastStatus();
             }
           }
         },
@@ -179,16 +199,23 @@ class QuranSTTService {
         _currentStatus = 'Mendengarkan: $_recognizedText';
         _broadcastStatus();
       },
-      listenFor: Duration(seconds: 15), // Ayat bisa panjang
-      pauseFor: Duration(seconds: 5),
+      listenFor: Duration(seconds: 30), // Increased: Beri waktu lebih lama
+      pauseFor: Duration(
+        seconds: 10,
+      ), // Increased: Tunggu lebih lama sebelum stop
       // Gunakan locale Arab jika tersedia, fallback ke Indonesia
       localeId: 'ar-SA', // Arabic (Saudi Arabia) untuk Quran
-      listenOptions: SpeechListenOptions(
-        cancelOnError: true,
-        partialResults: true,
-      ),
+      onSoundLevelChange: (level) {
+        // Log sound level untuk debugging
+        if (level > 0) {
+          print('[QuranSTT] 🔊 Sound level: ${level.toStringAsFixed(1)}');
+        }
+      },
+      cancelOnError: false, // Jangan langsung cancel saat error
+      partialResults: true,
+      listenMode: ListenMode.confirmation, // Lebih baik untuk frase pendek
     );
-    print('[QuranSTT] 🎧 Speech listener aktif (max 15s, pause 5s)');
+    print('[QuranSTT] 🎧 Speech listener aktif (max 30s, pause 10s)');
   }
 
   Future<void> stopListening() async {
@@ -228,8 +255,11 @@ class QuranSTTService {
     // Tanpa pencarian ayat
     print('[QuranSTT] 🎯 Mode Testing: Menampilkan teks yang didengar');
 
-    // Konversi teks ke Arab dengan harakat
-    final arabicWithHarakat = _convertToArabicWithHarakat(_recognizedText);
+    // Konversi teks ke Arab dengan harakat menggunakan API
+    print('[QuranSTT] 🔄 Memanggil API Tashkeel untuk menambahkan harakat...');
+    final arabicWithHarakat = await _convertToArabicWithHarakat(
+      _recognizedText,
+    );
     _arabicText = arabicWithHarakat;
     _currentStatus = 'Audio terdeteksi: $_recognizedText';
     print('[QuranSTT] ✏️  _arabicText di-set ke: "$_arabicText"');
@@ -271,76 +301,54 @@ class QuranSTTService {
     print('[QuranSTT] 📤 Status final telah di-broadcast!');
   }
 
-  /// Konversi teks Latin/transliterasi ke Arab dengan harakat
-  String _convertToArabicWithHarakat(String text) {
+  /// Konversi teks ke Arab dengan harakat menggunakan Tashkeel API
+  Future<String> _convertToArabicWithHarakat(String text) async {
     print('[QuranSTT] 🔤 Mengkonversi ke Arab dengan harakat: "$text"');
+    print('[QuranSTT] 🌐 Memanggil Tashkeel API...');
 
-    // Map transliterasi Latin ke Arab dengan harakat
-    final Map<String, String> transliterationMap = {
-      // Frasa lengkap dulu (untuk match yang lebih akurat)
-      'bismillah': 'بِسْمِ اللّٰهِ',
-      'bismillahirrahmanirrahim': 'بِسْمِ اللّٰهِ الرَّحْمٰنِ الرَّحِيْمِ',
-      'alhamdulillah': 'اَلْحَمْدُ لِلّٰهِ',
-      'alhamdulillahirabbilalamin': 'اَلْحَمْدُ لِلّٰهِ رَبِّ الْعٰلَمِيْنَ',
-      'arrahmanirrahim': 'الرَّحْمٰنِ الرَّحِيْمِ',
-      'maalikiyaumiddin': 'مٰلِكِ يَوْمِ الدِّيْنِ',
-      'iyyaakanabudu': 'اِيَّاكَ نَعْبُدُ',
-      'waiyyakanastaiin': 'وَاِيَّاكَ نَسْتَعِيْنُ',
-      'ihdinasshirathalmustaqim': 'اِهْدِنَا الصِّرَاطَ الْمُسْتَقِيْمَ',
-      'shirathalladzina': 'صِرَاطَ الَّذِيْنَ',
-      'annamta': 'اَنْعَمْتَ',
-      'alaihim': 'عَلَيْهِمْ',
-      'ghairilmaghdhubi': 'غَيْرِ الْمَغْضُوْبِ',
-      'waladhdhallin': 'وَلَا الضَّاۤلِّيْنَ',
-      'amin': 'اٰمِيْنَ',
+    try {
+      final url = Uri.parse('https://afdyl-api.vercel.app/api/tashkeel');
 
-      // Surat Al-Ikhlas
-      'qulhuwa': 'قُلْ هُوَ',
-      'allahu': 'اللّٰهُ',
-      'ahad': 'اَحَدٌ',
-      'allahushshamad': 'اللّٰهُ الصَّمَدُ',
-      'lamyalid': 'لَمْ يَلِدْ',
-      'walamyulad': 'وَلَمْ يُوْلَدْ',
-      'walamyakunlahu': 'وَلَمْ يَكُنْ لَّهٗ',
-      'kufuwanahad': 'كُفُوًا اَحَدٌ',
+      print('[QuranSTT] 📤 Mengirim request ke: $url');
+      print('[QuranSTT] 📝 Body: {"text": "$text"}');
 
-      // Kata-kata umum
-      'allah': 'اللّٰهُ',
-      'rahman': 'رَحْمٰنُ',
-      'rahim': 'رَحِيْمُ',
-      'rabb': 'رَبُّ',
-      'alamin': 'عٰلَمِيْنَ',
-      'malik': 'مٰلِكُ',
-      'yaum': 'يَوْمُ',
-      'din': 'دِيْنُ',
-      'nabudu': 'نَعْبُدُ',
-      'nastaiin': 'نَسْتَعِيْنُ',
-      'ihdina': 'اِهْدِنَا',
-      'shirath': 'صِرَاطُ',
-      'mustaqim': 'مُسْتَقِيْمُ',
-    };
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'text': text}),
+          )
+          .timeout(
+            Duration(seconds: 10),
+            onTimeout: () {
+              print('[QuranSTT] ⏱️  Request timeout setelah 10 detik');
+              throw TimeoutException('API request timeout');
+            },
+          );
 
-    String result = text.toLowerCase().trim();
+      print('[QuranSTT] 📥 Response status: ${response.statusCode}');
+      print('[QuranSTT] 📥 Response body: ${response.body}');
 
-    // Coba match frasa lengkap dulu
-    for (var entry in transliterationMap.entries) {
-      if (result.contains(entry.key)) {
-        result = result.replaceAll(entry.key, entry.value);
-        print(
-          '[QuranSTT] ✅ Match ditemukan: "${entry.key}" → "${entry.value}"',
-        );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true && data['vocalized_text'] != null) {
+          final vocalizedText = data['vocalized_text'] as String;
+          print('[QuranSTT] ✅ Berhasil! Vocalized text: "$vocalizedText"');
+          print('[QuranSTT] 📊 Length: ${data['length']} characters');
+          return vocalizedText;
+        } else {
+          print('[QuranSTT] ⚠️  API response success=false');
+          return '($text)'; // Fallback: tampilkan teks asli dalam kurung
+        }
+      } else {
+        print('[QuranSTT] ❌ API error: Status ${response.statusCode}');
+        return '($text)'; // Fallback: tampilkan teks asli dalam kurung
       }
+    } catch (e) {
+      print('[QuranSTT] ❌ Error saat memanggil Tashkeel API: $e');
+      return '($text)'; // Fallback: tampilkan teks asli dalam kurung
     }
-
-    // Jika tidak ada yang match, tampilkan teks asli dengan note
-    if (result == text.toLowerCase().trim()) {
-      print('[QuranSTT] ℹ️  Tidak ada match, tampilkan teks asli');
-      result =
-          '(${text})'; // Bungkus dengan kurung untuk menandakan belum ter-transliterasi
-    }
-
-    print('[QuranSTT] 🎨 Hasil konversi: "$result"');
-    return result;
   }
 
   Map<String, dynamic>? _findMatchingVerse(String text) {
