@@ -140,17 +140,6 @@ class _ReadingPageState extends State<ReadingPage> {
     setState(() => autoHighlight = false);
   }
 
-  void _toggleAuto() {
-    setState(() {
-      autoHighlight = !autoHighlight;
-    });
-    if (autoHighlight) {
-      _startAutoHighlight();
-    } else {
-      _stopAutoHighlight();
-    }
-  }
-
   void _playCurrentAyahAudio() {
     if (ayahs.isEmpty || currentActiveAyah >= ayahs.length) return;
     final ayah = ayahs[currentActiveAyah];
@@ -245,51 +234,6 @@ class _ReadingPageState extends State<ReadingPage> {
       }
     } else {
       _stopAutoHighlight();
-    }
-  }
-
-  void _previousAyah() {
-    if (currentActiveAyah > 0) {
-      setState(() {
-        currentActiveAyah--;
-        currentActiveWord = 0;
-      });
-      _scrollToAyah(currentActiveAyah);
-      _trackHighlightedAyah(currentActiveAyah); // Track activity
-      _saveLastReadProgress(); // Simpan progress
-      if (autoHighlight) {
-        _playCurrentAyahAudio();
-      }
-    }
-  }
-
-  void _nextWord() {
-    if (ayahs.isEmpty) return;
-    final currentWords =
-        (ayahs[currentActiveAyah]['words'] as List<dynamic>?) ?? [];
-    if (currentWords.isNotEmpty) {
-      if (currentActiveWord < currentWords.length - 1) {
-        setState(() => currentActiveWord++);
-      } else {
-        _nextAyah();
-      }
-    } else {
-      _nextAyah();
-    }
-  }
-
-  void _previousWord() {
-    if (ayahs.isEmpty) return;
-    final currentWords =
-        (ayahs[currentActiveAyah]['words'] as List<dynamic>?) ?? [];
-    if (currentWords.isNotEmpty) {
-      if (currentActiveWord > 0) {
-        setState(() => currentActiveWord--);
-      } else {
-        _previousAyah();
-      }
-    } else {
-      _previousAyah();
     }
   }
 

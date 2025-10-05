@@ -3,7 +3,6 @@ import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../services/quran_service.dart';
 import '../routes/app_routes.dart';
-import '../constants/arabic_text_styles.dart';
 
 class QuranPage extends StatefulWidget {
   @override
