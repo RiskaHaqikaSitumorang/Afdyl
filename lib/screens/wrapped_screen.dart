@@ -72,16 +72,21 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen>
 
       setState(() {
         _topSurahs =
-            (wrappedData['topSurahs'] as List<Map<String, dynamic>>).map((
-              surah,
-            ) {
-              return {
-                'rank': (_topSurahs.length + 1),
-                'name': SurahNames.getName(surah['surat_number'] as int),
-                'count': surah['count'] as int,
-                'surat_number': surah['surat_number'] as int,
-              };
-            }).toList();
+            (wrappedData['topSurahs'] as List<Map<String, dynamic>>)
+                .asMap()
+                .entries
+                .map((entry) {
+                  int index = entry.key;
+                  Map<String, dynamic> surah = entry.value;
+
+                  return {
+                    'rank': index + 1,
+                    'name': SurahNames.getName(surah['surat_number'] as int),
+                    'count': surah['count'] as int,
+                    'surat_number': surah['surat_number'] as int,
+                  };
+                })
+                .toList();
 
         _totalSurahsRead = wrappedData['totalSurahsRead'] as int;
         _totalReadingSessions = wrappedData['totalReadingSessions'] as int;
