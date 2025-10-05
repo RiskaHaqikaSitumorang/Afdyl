@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/quran_service.dart';
 import '../services/last_read_service.dart';
+import '../services/surat_activity_service.dart';
 import '../constants/app_colors.dart';
 
 class ReadingPage extends StatefulWidget {
@@ -45,6 +46,12 @@ class _ReadingPageState extends State<ReadingPage> {
   StreamSubscription? _positionSubscription;
   StreamSubscription? _completionSubscription;
 
+  // Activity tracking
+  final Set<int> _highlightedAyahs =
+      {}; // Track unique highlighted ayahs in current session
+  String? _currentSessionId; // Unique session ID
+  Timer? _activityDebounceTimer; // Debounce timer
+
   // sizing getters
   double get ayahNumberSize => (fontSize * 0.65).clamp(14.0, 32.0);
   double get wordPadding => (fontSize * 0.35).clamp(6.0, 18.0);
@@ -69,6 +76,7 @@ class _ReadingPageState extends State<ReadingPage> {
     _audioPlayer.dispose();
     _positionSubscription?.cancel();
     _completionSubscription?.cancel();
+    _activityDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -218,6 +226,7 @@ class _ReadingPageState extends State<ReadingPage> {
     });
 
     _scrollToAyah(ayahIndex);
+    _trackHighlightedAyah(ayahIndex); // Track activity
     _saveLastReadProgress(); // Simpan progress
     _playCurrentAyahAudio();
   }
@@ -229,6 +238,7 @@ class _ReadingPageState extends State<ReadingPage> {
         currentActiveWord = 0;
       });
       _scrollToAyah(currentActiveAyah);
+      _trackHighlightedAyah(currentActiveAyah); // Track activity
       _saveLastReadProgress(); // Simpan progress
       if (autoHighlight) {
         _playCurrentAyahAudio();
@@ -245,6 +255,7 @@ class _ReadingPageState extends State<ReadingPage> {
         currentActiveWord = 0;
       });
       _scrollToAyah(currentActiveAyah);
+      _trackHighlightedAyah(currentActiveAyah); // Track activity
       _saveLastReadProgress(); // Simpan progress
       if (autoHighlight) {
         _playCurrentAyahAudio();
@@ -324,6 +335,81 @@ class _ReadingPageState extends State<ReadingPage> {
     print('Progress saved successfully');
   }
 
+  /// Track highlighted ayah and record activity when 5+ unique ayahs are highlighted
+  void _trackHighlightedAyah(int ayahIndex) {
+    // Initialize session ID on first highlight
+    _currentSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Check if we already recorded for this session (marked with -1 sentinel)
+    if (_highlightedAyahs.contains(-1)) {
+      return; // Already recorded this session
+    }
+
+    // Add to set (automatically handles duplicates)
+    _highlightedAyahs.add(ayahIndex);
+
+    print(
+      '[ReadingPage] 📊 Highlighted ayahs: ${_highlightedAyahs.length}/5 (${_highlightedAyahs.join(", ")})',
+    );
+
+    // Check if we've reached the threshold
+    if (_highlightedAyahs.length >= 5 && !_highlightedAyahs.contains(-1)) {
+      _recordActivity();
+    }
+  }
+
+  /// Record activity with debouncing to avoid spam
+  void _recordActivity() {
+    // Cancel previous timer if exists
+    _activityDebounceTimer?.cancel();
+
+    // Set new timer with 2 second delay
+    _activityDebounceTimer = Timer(const Duration(seconds: 2), () async {
+      // Check if already recorded (marked with -1 sentinel value)
+      if (_highlightedAyahs.contains(-1)) return;
+
+      print('[ReadingPage] 🎯 Recording activity for Surat ${widget.number}');
+
+      final success = await SuratActivityService.recordSuratActivity(
+        widget.number,
+      );
+
+      if (success) {
+        setState(() {
+          // Mark as recorded by adding sentinel value
+          _highlightedAyahs.add(-1);
+        });
+        print('[ReadingPage] ✅ Activity recorded successfully');
+
+        // Show subtle feedback to user
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Progres bacaan tersimpan! 🎉',
+                      style: TextStyle(fontFamily: 'OpenDyslexic'),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    });
+  }
+
   // Convert to Arabic numerals (simple)
   String getArabicNumber(int number) {
     const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -345,6 +431,7 @@ class _ReadingPageState extends State<ReadingPage> {
           currentActiveWord = 0;
         });
         _scrollToAyah(currentActiveAyah);
+        _trackHighlightedAyah(currentActiveAyah); // Track activity
         _saveLastReadProgress(); // Simpan progress
         if (autoHighlight) {
           _playCurrentAyahAudio();
@@ -414,6 +501,7 @@ class _ReadingPageState extends State<ReadingPage> {
             currentActiveWord = wordIndex;
           });
           _scrollToAyah(ayahIndex);
+          _trackHighlightedAyah(ayahIndex); // Track activity
           _saveLastReadProgress(); // Simpan progress
           if (autoHighlight) {
             _playCurrentAyahAudio();
@@ -474,6 +562,7 @@ class _ReadingPageState extends State<ReadingPage> {
           currentActiveWord = 0;
         });
         _scrollToAyah(ayahIndex);
+        _trackHighlightedAyah(ayahIndex); // Track activity
         _saveLastReadProgress(); // Simpan progress
       },
       child: Opacity(
