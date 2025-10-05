@@ -8,38 +8,62 @@ class WrappedService {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  /// Get the wrapped period dates for current year (TESTING: Last 7 days)
+  /// Get dummy wrapped data for demo/competition purposes
+  static Future<Map<String, dynamic>> getDummyWrapped() async {
+    // Simulate loading delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    return {
+      'totalSurahsRead': 15,
+      'totalReadingSessions': 89,
+      'totalDaysActive': 247,
+      'topSurahs': [
+        {'surat_number': 112, 'count': 45, 'timestamp': '2025-10-05'}, // Al-Ikhlas
+        {'surat_number': 114, 'count': 38, 'timestamp': '2025-10-04'}, // An-Nas
+        {'surat_number': 113, 'count': 32, 'timestamp': '2025-10-03'}, // Al-Falaq
+        {'surat_number': 107, 'count': 28, 'timestamp': '2025-10-02'}, // Al-Ma'un
+        {'surat_number': 1, 'count': 24, 'timestamp': '2025-10-01'},   // Al-Fatihah
+      ],
+    };
+  }
+
+  /// Get the wrapped period dates for current year (PRODUCTION: Full year)
   static Map<String, DateTime> getCurrentYearPeriod() {
     final now = DateTime.now();
+    final currentYear = now.year;
 
-    // TESTING MODE: Period is last 7 days (1 week ago to now)
-    final startDate = now.subtract(const Duration(days: 7));
-    final endDate = now;
+    // PRODUCTION: Full year period (Jan 1 to Dec 31)
+    final startDate = DateTime(currentYear, 1, 1);
+    final endDate = DateTime(currentYear, 12, 31);
 
     return {'start': startDate, 'end': endDate};
   }
 
-  /// Get the wrapped period dates for last year (TESTING: 14-7 days ago)
+  /// Get the wrapped period dates for last year
   static Map<String, DateTime> getLastYearPeriod() {
     final now = DateTime.now();
+    final lastYear = now.year - 1;
 
-    // TESTING MODE: Period is 14-7 days ago (previous week)
-    final startDate = now.subtract(const Duration(days: 14));
-    final endDate = now.subtract(const Duration(days: 7));
+    // Last year period (Jan 1 to Dec 31 of last year)
+    final startDate = DateTime(lastYear, 1, 1);
+    final endDate = DateTime(lastYear, 12, 31);
 
     return {'start': startDate, 'end': endDate};
   }
 
-  /// Check if wrapped is available (TESTING: Always available)
+  /// Check if wrapped is available (after Dec 31)
   static bool isWrappedAvailable() {
-    // TESTING MODE: Always available
-    return true;
+    final now = DateTime.now();
+    final yearEnd = DateTime(now.year, 12, 31, 23, 59, 59);
+    return now.isAfter(yearEnd);
   }
 
-  /// Get days until wrapped is available (TESTING: Always 0)
+  /// Get days until wrapped is available
   static int getDaysUntilWrapped() {
-    // TESTING MODE: Always available (0 days)
-    return 0;
+    final now = DateTime.now();
+    final yearEnd = DateTime(now.year, 12, 31, 23, 59, 59);
+    if (now.isAfter(yearEnd)) return 0;
+    return yearEnd.difference(now).inDays + 1;
   }
 
   /// Get top 5 most read surahs for a given period
