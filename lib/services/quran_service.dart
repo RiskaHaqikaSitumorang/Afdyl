@@ -1,6 +1,7 @@
 // lib/services/quran_service.dart
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../utils/surah_names.dart';
 
 class QuranService {
   static const String _baseUrl = 'https://api.alquran.cloud/v1';
@@ -18,7 +19,15 @@ class QuranService {
         final data = json.decode(response.body);
         print('Fetched surahs data: $data'); // Debug print
         if (data != null && data['data'] != null) {
-          return List<Map<String, dynamic>>.from(data['data']);
+          // Replace English names with Indonesian names
+          List<Map<String, dynamic>> surahs = List<Map<String, dynamic>>.from(
+            data['data'],
+          );
+          for (var surah in surahs) {
+            final number = surah['number'] as int;
+            surah['englishName'] = SurahNames.getName(number);
+          }
+          return surahs;
         } else {
           print('Invalid data structure from API');
           throw Exception('Invalid data structure from API');
@@ -281,18 +290,136 @@ class QuranService {
   }
 
   List<Map<String, dynamic>> _getStaticSurahs() {
-    return [
-      {'number': 1, 'englishName': 'Al-Fatihah', 'name': 'الفاتحة'},
-      {'number': 2, 'englishName': 'Al-Baqarah', 'name': 'البقرة'},
-      {'number': 3, 'englishName': 'Ali \'Imran', 'name': 'آل عمران'},
-      {'number': 4, 'englishName': 'An-Nisa', 'name': 'النساء'},
-      {'number': 5, 'englishName': 'Al-Ma\'idah', 'name': 'المائدة'},
-      {'number': 6, 'englishName': 'Al-An\'am', 'name': 'الأنعام'},
-      {'number': 7, 'englishName': 'Al-A\'raf', 'name': 'الأعراف'},
-      {'number': 8, 'englishName': 'Al-Anfal', 'name': 'الأنفال'},
-      {'number': 9, 'englishName': 'At-Tawbah', 'name': 'التوبة'},
-      {'number': 10, 'englishName': 'Yunus', 'name': 'يونس'},
-    ];
+    // Generate static surahs with Indonesian names
+    return List.generate(114, (index) {
+      final number = index + 1;
+      return {
+        'number': number,
+        'englishName': SurahNames.getName(number),
+        'name': _getArabicSurahName(number),
+      };
+    });
+  }
+
+  // Helper method to get Arabic surah names
+  String _getArabicSurahName(int number) {
+    const arabicNames = {
+      1: 'الفاتحة',
+      2: 'البقرة',
+      3: 'آل عمران',
+      4: 'النساء',
+      5: 'المائدة',
+      6: 'الأنعام',
+      7: 'الأعراف',
+      8: 'الأنفال',
+      9: 'التوبة',
+      10: 'يونس',
+      11: 'هود',
+      12: 'يوسف',
+      13: 'الرعد',
+      14: 'ابراهيم',
+      15: 'الحجر',
+      16: 'النحل',
+      17: 'الإسراء',
+      18: 'الكهف',
+      19: 'مريم',
+      20: 'طه',
+      21: 'الأنبياء',
+      22: 'الحج',
+      23: 'المؤمنون',
+      24: 'النور',
+      25: 'الفرقان',
+      26: 'الشعراء',
+      27: 'النمل',
+      28: 'القصص',
+      29: 'العنكبوت',
+      30: 'الروم',
+      31: 'لقمان',
+      32: 'السجدة',
+      33: 'الأحزاب',
+      34: 'سبإ',
+      35: 'فاطر',
+      36: 'يس',
+      37: 'الصافات',
+      38: 'ص',
+      39: 'الزمر',
+      40: 'غافر',
+      41: 'فصلت',
+      42: 'الشورى',
+      43: 'الزخرف',
+      44: 'الدخان',
+      45: 'الجاثية',
+      46: 'الأحقاف',
+      47: 'محمد',
+      48: 'الفتح',
+      49: 'الحجرات',
+      50: 'ق',
+      51: 'الذاريات',
+      52: 'الطور',
+      53: 'النجم',
+      54: 'القمر',
+      55: 'الرحمن',
+      56: 'الواقعة',
+      57: 'الحديد',
+      58: 'المجادلة',
+      59: 'الحشر',
+      60: 'الممتحنة',
+      61: 'الصف',
+      62: 'الجمعة',
+      63: 'المنافقون',
+      64: 'التغابن',
+      65: 'الطلاق',
+      66: 'التحريم',
+      67: 'الملك',
+      68: 'القلم',
+      69: 'الحاقة',
+      70: 'المعارج',
+      71: 'نوح',
+      72: 'الجن',
+      73: 'المزمل',
+      74: 'المدثر',
+      75: 'القيامة',
+      76: 'الانسان',
+      77: 'المرسلات',
+      78: 'النبإ',
+      79: 'النازعات',
+      80: 'عبس',
+      81: 'التكوير',
+      82: 'الإنفطار',
+      83: 'المطففين',
+      84: 'الإنشقاق',
+      85: 'البروج',
+      86: 'الطارق',
+      87: 'الأعلى',
+      88: 'الغاشية',
+      89: 'الفجر',
+      90: 'البلد',
+      91: 'الشمس',
+      92: 'الليل',
+      93: 'الضحى',
+      94: 'الشرح',
+      95: 'التين',
+      96: 'العلق',
+      97: 'القدر',
+      98: 'البينة',
+      99: 'الزلزلة',
+      100: 'العاديات',
+      101: 'القارعة',
+      102: 'التكاثر',
+      103: 'العصر',
+      104: 'الهمزة',
+      105: 'الفيل',
+      106: 'قريش',
+      107: 'الماعون',
+      108: 'الكوثر',
+      109: 'الكافرون',
+      110: 'النصر',
+      111: 'المسد',
+      112: 'الإخلاص',
+      113: 'الفلق',
+      114: 'الناس',
+    };
+    return arabicNames[number] ?? '';
   }
 
   // Helper method to remove first 4 words from text
