@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/hijaiyah_model.dart';
 import '../widgets/hijaiyah_flashcard.dart';
-import 'hijaiyah_tracing_detail_page.dart'; // Impor relatif ke detail page
+import 'hijaiyah_tracing_detail_page.dart';
+import '../constants/app_colors.dart';
 
 class HijaiyahTracingPage extends StatefulWidget {
   @override
@@ -9,114 +10,51 @@ class HijaiyahTracingPage extends StatefulWidget {
 }
 
 class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
-  bool isHurufMode = true;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 80, // Increased height to accommodate the extra spacing
+        leading: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+          decoration: BoxDecoration(
+            color: AppColors.tertiary.withOpacity(0.4),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.chevron_left,
+              color: AppColors.tertiary,
+              size: 25,
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            "Jejak Hijaiyah",
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFB8D4B8),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: Colors.black,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Tracing Hijaiyah',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                        fontFamily: 'OpenDyslexic',
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 40),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isHurufMode = true),
-                      child: Container(
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: isHurufMode
-                              ? Color(0xFFD4C785)
-                              : Color(0xFFE8D4A3),
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Huruf',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                              fontFamily: 'OpenDyslexic',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isHurufMode = false),
-                      child: Container(
-                        height: 45,
-                        decoration: BoxDecoration(
-                          color: !isHurufMode
-                              ? Color(0xFFD4C785)
-                              : Color(0xFFE8D4A3),
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Harakat',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black,
-                              fontFamily: 'OpenDyslexic',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
                 child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -124,54 +62,46 @@ class HijaiyahTracingPageState extends State<HijaiyahTracingPage> {
                     mainAxisSpacing: 16,
                     childAspectRatio: 0.85,
                   ),
-                  itemCount: isHurufMode
-                      ? hijaiyahLetters.length // 28 huruf
-                      : hijaiyahLetters.length * 3, // 28 huruf x 3 variasi = 84 item
+                  itemCount: hijaiyahLetters.length, // Hanya 28 huruf
                   itemBuilder: (context, index) {
-                    if (index >= hijaiyahLetters.length && isHurufMode) {
-                      print('Index out of bounds: $index');
-                      return Container(); // Placeholder untuk menghindari error
-                    }
                     return HijaiyahFlashcard(
                       index: index,
-                      isHurufMode: isHurufMode,
-                      onTap: () => _navigateToTracingDetail(index, isHurufMode),
+                      isHurufMode: true, // Selalu huruf mode
+                      onTap: () => _navigateToTracingDetail(index),
                     );
                   },
                 ),
               ),
             ),
+            SizedBox(height: 20.0),
           ],
         ),
       ),
     );
   }
 
-  void _navigateToTracingDetail(int index, bool isHurufMode) {
-    if (index >= hijaiyahLetters.length && isHurufMode) {
+  void _navigateToTracingDetail(int index) {
+    if (index >= hijaiyahLetters.length) {
       print('Warning: Index $index exceeds hijaiyahLetters length');
       return;
     }
-    final letterData = isHurufMode
-        ? hijaiyahLetters[index]
-        : hijaiyahLetters[index ~/ 3]; // Ambil huruf berdasarkan indeks utama
-    final variationIndex = index % 3;
-    final displayText = isHurufMode
-        ? letterData.arabic
-        : [letterData.fatha, letterData.kasra, letterData.damma][variationIndex];
-    final pronunciationText = isHurufMode
-        ? '(${letterData.latin})'
-        : harakatPronunciations[index]; // Gunakan indeks langsung untuk 84 item
 
-    print('Navigating to: letter=$displayText, pronunciation=$pronunciationText');
+    final letterData = hijaiyahLetters[index];
+    final displayText = letterData.arabic;
+    final pronunciationText = '(${letterData.latin})';
+
+    print(
+      'Navigating to: letter=$displayText, pronunciation=$pronunciationText',
+    );
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => HijaiyahTracingDetailPage(
-          letter: displayText,
-          pronunciation: pronunciationText,
-        ),
+        builder:
+            (context) => HijaiyahTracingDetailPage(
+              letter: displayText,
+              pronunciation: pronunciationText,
+            ),
       ),
     );
   }

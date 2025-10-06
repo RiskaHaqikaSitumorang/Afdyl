@@ -1,44 +1,147 @@
+// lib/screens/dashboard_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:google_fonts/google_fonts.dart';
 import '../routes/app_routes.dart';
-import '../services/quran_service.dart';
+import '../widgets/page_transitions.dart';
+import '../screens/profile_page.dart';
+import '../constants/app_colors.dart';
+import '../constants/arabic_text_styles.dart';
+import '../services/prayer_service.dart';
+import '../services/last_read_service.dart';
+import '../services/auth_service.dart';
+import '../models/prayer_times_model.dart';
+import '../models/user_model.dart';
+import '../main.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
-
   @override
-  DashboardScreenState createState() => DashboardScreenState();
+  _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class DashboardScreenState extends State<DashboardScreen> {
-  final QuranService _quranService = QuranService();
-  String currentTime = "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver, RouteAware {
+  String currentTime =
+      "${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}";
   String prayerTime = "Memuat jadwal sholat...";
-  Map<String, dynamic> lastRead = {};
+  String lastRead = "Belum ada bacaan";
+  Map<String, dynamic>? lastReadData;
   String location = "Mendapatkan lokasi...";
   late Timer _timer;
-  double? _latitude;
-  double? _longitude;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  // Prayer times state
+  PrayerTimes? prayerTimes;
+  bool isLoadingPrayerTimes = true;
+  final PrayerService _prayerService = PrayerService();
+
+  // User profile state
+  UserModel? _currentUser;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
-    _startTimeUpdate();
-    _getCurrentLocation();
-    _loadLastRead();
+    print('[Dashboard] 🎬 initState called');
+    try {
+      WidgetsBinding.instance.addObserver(this);
+      _startTimeUpdate();
+      _safeAsyncInit();
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error in initState: $e');
+      print('[Dashboard] Stack: $stack');
+      setState(() {
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  // Safe async initialization
+  Future<void> _safeAsyncInit() async {
+    try {
+      print('[Dashboard] 🔄 Starting async initialization...');
+      await Future.wait([
+        _getCurrentLocation(),
+        _loadLastReadData(),
+        _loadUserProfile(),
+      ]);
+      print('[Dashboard] ✅ Async initialization complete');
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error in async init: $e');
+      print('[Dashboard] Stack: $stack');
+      // Don't set error state, just log it
+      // App can continue with default values
+    }
+  }
+
+  // Load user profile untuk mendapatkan profile image
+  Future<void> _loadUserProfile() async {
+    try {
+      print('[Dashboard] 👤 Loading user profile...');
+      final user = await _authService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+        });
+        print('[Dashboard] ✅ User profile loaded');
+      }
+    } catch (e) {
+      print('[Dashboard] ❌ Error loading user profile: $e');
+      // Don't throw error, just log it
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    routeObserver.unsubscribe(this);
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Refresh data saat user kembali ke aplikasi/dashboard
+      _loadLastReadData();
+    }
+  }
+
+  @override
+  void didPush() {
+    // Called when the current route has been pushed
+    print('Dashboard: didPush called');
+    _loadLastReadData();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when the top route has been popped off, and this route shows up
+    print('Dashboard: didPopNext called - User returned to dashboard');
+    _loadLastReadData();
+    _loadUserProfile(); // Refresh profile image saat kembali ke dashboard
   }
 
   void _startTimeUpdate() {
     _updateTime();
-    const Duration updateInterval = Duration(seconds: 1);
+    const Duration updateInterval = Duration(minutes: 1);
     _timer = Timer.periodic(updateInterval, (timer) {
       if (mounted) {
         setState(() {
           _updateTime();
+          // Refresh next-prayer header each minute when data is available
+          _updateNextPrayerMessageFromModel();
         });
       }
     });
@@ -46,155 +149,311 @@ class DashboardScreenState extends State<DashboardScreen> {
 
   void _updateTime() {
     final now = DateTime.now();
-    currentTime = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+    currentTime =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
   }
 
-  Future<void> _loadLastRead() async {
+  Future<void> _loadLastReadData() async {
     try {
-      final data = await _quranService.fetchLastRead();
+      print('[Dashboard] 📖 Loading last read data...');
+      final data = await LastReadService.getLastRead();
+      print('[Dashboard] Last read data: $data');
       if (mounted) {
         setState(() {
-          lastRead = data;
+          lastReadData = data;
+          if (data != null) {
+            lastRead = LastReadService.formatLastReadText(data);
+            print('[Dashboard] ✅ Formatted last read: $lastRead');
+          } else {
+            lastRead = "Belum ada bacaan";
+            print('[Dashboard] ℹ️ No last read data found');
+          }
         });
       }
-    } catch (e) {
-      print('Error in _loadLastRead: $e');
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error loading last read: $e');
+      print('[Dashboard] Stack: $stack');
       if (mounted) {
         setState(() {
-          lastRead = {};
+          lastRead = "Belum ada bacaan";
         });
       }
+    }
+  }
+
+  void _onLastReadTap() {
+    if (lastReadData != null) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.reading,
+        arguments: {
+          'type': lastReadData!['type'],
+          'number': lastReadData!['surahNumber'],
+          'name': lastReadData!['surahName'],
+          'initialAyah': lastReadData!['ayahNumber'],
+          'initialWord': lastReadData!['wordNumber'],
+        },
+      ).then((_) {
+        // Refresh data saat kembali dari reading page
+        print('Returned from reading page, refreshing last read data...');
+        _loadLastReadData();
+      });
+    } else {
+      // Jika belum ada data, buka halaman Quran
+      Navigator.pushNamed(context, AppRoutes.quran).then((_) {
+        // Refresh data saat kembali dari quran page
+        print('Returned from quran page, refreshing last read data...');
+        _loadLastReadData();
+      });
     }
   }
 
   Future<void> _getCurrentLocation() async {
+    print('[Dashboard] Getting current location...');
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            setState(() {
-              location = "Izin lokasi ditolak";
-            });
-          }
-          return;
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          setState(() {
-            location = "Izin lokasi permanen ditolak, aktifkan di pengaturan";
-          });
-        }
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('[Dashboard] Location services are disabled');
+        setState(() {
+          location = "Layanan lokasi tidak aktif";
+          isLoadingPrayerTimes = false;
+        });
+        // Use default location (Jakarta) for prayer times
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
         return;
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      );
-      if (mounted) {
-        setState(() {
-          _latitude = position.latitude;
-          _longitude = position.longitude;
-        });
+      LocationPermission permission = await Geolocator.checkPermission();
+      print('[Dashboard] Location permission status: $permission');
+
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        print('[Dashboard] Permission request result: $permission');
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            location = "Jakarta, Indonesia"; // Default location
+            isLoadingPrayerTimes = false;
+          });
+          // Use default location
+          await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+          return;
+        }
       }
-      await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
-      await _fetchPrayerTimes(position.latitude, position.longitude);
-    } catch (e) {
-      if (mounted) {
+
+      if (permission == LocationPermission.deniedForever) {
+        print('[Dashboard] Permission denied forever');
         setState(() {
-          location = "Gagal mendapatkan lokasi: $e";
+          location = "Jakarta, Indonesia"; // Default location
+          isLoadingPrayerTimes = false;
         });
+        // Use default location
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+        return;
+      }
+
+      print('[Dashboard] Getting position...');
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy:
+            LocationAccuracy.medium, // Changed to medium for faster response
+        timeLimit: Duration(seconds: 15), // Increased timeout
+      ).timeout(
+        Duration(seconds: 15),
+        onTimeout: () {
+          print('[Dashboard] Position timeout, using default');
+          setState(() {
+            location = "Jakarta, Indonesia";
+          });
+          throw TimeoutException('Location timeout');
+        },
+      );
+
+      print(
+        '[Dashboard] Position obtained: ${position.latitude}, ${position.longitude}',
+      );
+      await _getPlaceNameFromCoordinates(position.latitude, position.longitude);
+      await _fetchTodayPrayerTimes(position.latitude, position.longitude);
+    } catch (e) {
+      print('[Dashboard] Error getting location: $e');
+      setState(() {
+        location = "Jakarta, Indonesia"; // Fallback to default
+        isLoadingPrayerTimes = false;
+      });
+      // Use default location for prayer times
+      try {
+        await _fetchTodayPrayerTimes(-6.2088, 106.8456);
+      } catch (prayerError) {
+        print('[Dashboard] Error fetching prayer times: $prayerError');
       }
     }
   }
 
-  Future<void> _getPlaceNameFromCoordinates(double latitude, double longitude) async {
+  Future<void> _getPlaceNameFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isNotEmpty) {
         Placemark placemark = placemarks.first;
         String locality = placemark.locality ?? "Unknown";
         String administrativeArea = placemark.administrativeArea ?? "Unknown";
-        if (mounted) {
-          setState(() {
-            location = "$locality, $administrativeArea";
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            location = "Lokasi tidak ditemukan";
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
         setState(() {
-          location = "Gagal mengambil nama lokasi: $e";
+          location = "$locality, $administrativeArea";
+        });
+      } else {
+        setState(() {
+          location = "Lokasi tidak ditemukan";
         });
       }
+    } catch (e) {
+      setState(() {
+        location = "Gagal mengambil nama lokasi: $e";
+      });
     }
   }
 
-  Future<void> _fetchPrayerTimes(double latitude, double longitude) async {
+  Future<void> _fetchTodayPrayerTimes(double latitude, double longitude) async {
     try {
-      final response = await http.get(Uri.parse(
-          'http://api.aladhan.com/v1/timingsByLatLng?latitude=$latitude&longitude=$longitude&method=2'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final timings = data['data']['timings'];
-        final now = DateTime.now();
-        final currentHour = now.hour;
-        String nextPrayer = "Tidak ada data";
+      print('[Dashboard] 🕌 Fetching prayer times for: $latitude, $longitude');
+      if (mounted) setState(() => isLoadingPrayerTimes = true);
 
-        if (currentHour < int.parse(timings['Fajr'].split(':')[0])) {
-          nextPrayer = "Fajr: ${timings['Fajr']}";
-        } else if (currentHour < int.parse(timings['Dhuhr'].split(':')[0])) {
-          nextPrayer = "Dhuhr: ${timings['Dhuhr']}";
-        } else if (currentHour < int.parse(timings['Asr'].split(':')[0])) {
-          nextPrayer = "Asr: ${timings['Asr']}";
-        } else if (currentHour < int.parse(timings['Maghrib'].split(':')[0])) {
-          nextPrayer = "Maghrib: ${timings['Maghrib']}";
-        } else if (currentHour < int.parse(timings['Isha'].split(':')[0])) {
-          nextPrayer = "Isha: ${timings['Isha']}";
-        } else {
-          nextPrayer = "Fajr: ${timings['Fajr']} (besok)";
-        }
+      final fetchedPrayerTimes = await _prayerService
+          .fetchPrayerTimes(latitude, longitude)
+          .timeout(
+            Duration(seconds: 20),
+            onTimeout: () {
+              print('[Dashboard] ⏱️ Prayer times fetch timeout');
+              throw TimeoutException('Prayer times timeout');
+            },
+          );
 
-        if (mounted) {
-          setState(() {
-            prayerTime = "Sekarang waktu $nextPrayer";
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            prayerTime = "Gagal memuat jadwal sholat";
-          });
-        }
-      }
-    } catch (e) {
       if (mounted) {
         setState(() {
-          prayerTime = "Error: $e";
+          prayerTimes = fetchedPrayerTimes;
+          isLoadingPrayerTimes = false;
+        });
+        // Update the header message using the newly loaded model
+        _updateNextPrayerMessageFromModel();
+        print('[Dashboard] ✅ Prayer times loaded successfully');
+      }
+    } catch (e, stack) {
+      print('[Dashboard] ❌ Error fetching prayer times: $e');
+      print('[Dashboard] Stack: $stack');
+      if (mounted) {
+        setState(() {
+          isLoadingPrayerTimes = false;
+          prayerTime = 'Jadwal sholat tidak tersedia';
         });
       }
     }
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
+  // --- Helpers to compute the next upcoming prayer name ---
+  static const Map<String, String> _idPrayerNamesLower = {
+    'Fajr': 'subuh',
+    'Dhuhr': 'zuhur',
+    'Asr': 'ashar',
+    'Maghrib': 'maghrib',
+    'Isha': 'isya',
+  };
+
+  DateTime _parseToday(String hhmm) {
+    final clean = hhmm.split(' ').first; // strip timezone if exists
+    final parts = clean.split(':');
+    final now = DateTime.now();
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = (parts.length > 1) ? int.tryParse(parts[1]) ?? 0 : 0;
+    return DateTime(now.year, now.month, now.day, h, m);
+  }
+
+  void _updateNextPrayerMessageFromModel() {
+    if (prayerTimes == null) return;
+    final now = DateTime.now();
+    final order = [
+      MapEntry('Fajr', prayerTimes!.fajr),
+      MapEntry('Dhuhr', prayerTimes!.dhuhr),
+      MapEntry('Asr', prayerTimes!.asr),
+      MapEntry('Maghrib', prayerTimes!.maghrib),
+      MapEntry('Isha', prayerTimes!.isha),
+    ];
+    String? nextNameLower;
+    for (final e in order) {
+      final t = _parseToday(e.value);
+      if (t.isAfter(now)) {
+        nextNameLower = _idPrayerNamesLower[e.key];
+        break;
+      }
+    }
+    nextNameLower ??= _idPrayerNamesLower['Fajr'];
+    setState(() {
+      final capitalizedPrayer =
+          nextNameLower != null
+              ? nextNameLower[0].toUpperCase() + nextNameLower.substring(1)
+              : '-';
+      prayerTime = 'Menuju waktu shalat $capitalizedPrayer';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    print('[Dashboard] 🎨 Building widget tree...');
+
+    // Error boundary - if there's a critical error, show error screen
+    if (_hasError) {
+      return Scaffold(
+        backgroundColor: AppColors.whiteSoft,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 64),
+                  SizedBox(height: 24),
+                  Text(
+                    'Terjadi Kesalahan',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    _errorMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _hasError = false;
+                        _errorMessage = '';
+                      });
+                      _safeAsyncInit();
+                    },
+                    child: Text('Coba Lagi'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
+      backgroundColor: AppColors.whiteSoft,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -206,29 +465,28 @@ class DashboardScreenState extends State<DashboardScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFE8B4B8),
-                      Color(0xFFD4A5A8),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
+                    colors: [AppColors.primary, AppColors.primaryDark],
                   ),
                 ),
                 child: Stack(
                   children: [
-                    Positioned.fill(
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 200,
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(30),
-                          bottomRight: Radius.circular(30),
-                        ),
-                        child: Image.asset(
-                          'assets/images/img_masjid_pink.png',
-                          fit: BoxFit.cover,
-                          color: Colors.white.withOpacity(0.01),
-                          colorBlendMode: BlendMode.srcATop,
+                        child: Opacity(
+                          opacity: 1,
+                          child: Transform.scale(
+                            scale: 1,
+                            alignment: Alignment.bottomCenter,
+                            child: Image.asset(
+                              'assets/images/img_masjid.png',
+                              fit: BoxFit.fitHeight,
+                              alignment: Alignment.bottomCenter,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -241,32 +499,58 @@ class DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushNamed(context, AppRoutes.profile);
+                                  context.pushSlideLeft(const ProfilePage());
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.all(8),
+                                  width: 46,
+                                  height: 46,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
+                                  child: ClipOval(child: _buildProfileAvatar()),
                                 ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushNamed(context, AppRoutes.wrapped);
+                                  Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.wrapped,
+                                  );
                                 },
                                 child: Container(
-                                  width: 40,
-                                  height: 40,
+                                  width: 46,
+                                  height: 46,
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
                                   child: Image.asset(
                                     'assets/images/ic_rank.png',
@@ -276,14 +560,13 @@ class DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 32),
                           Text(
                             currentTime,
-                            style: const TextStyle(
+                            style: GoogleFonts.montserrat(
                               fontSize: 64,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
-                              fontFamily: 'OpenDyslexic',
                               letterSpacing: 2,
                             ),
                           ),
@@ -291,329 +574,239 @@ class DashboardScreenState extends State<DashboardScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.access_time,
-                                color: Colors.white.withValues(alpha: 0.8),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
                               Text(
                                 prayerTime,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.white.withValues(alpha: 0.9),
+                                  color: AppColors.blackPrimary,
                                   fontFamily: 'OpenDyslexic',
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Opacity(
+                                opacity: 0.5,
+                                child: Image.asset(
+                                  'assets/images/ic_point.png',
+                                  width: 24,
+                                  height: 24,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  location,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: AppColors.blackPrimary.withOpacity(
+                                      0.5,
+                                    ),
+                                    fontFamily: 'OpenDyslexic',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 50),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: lastRead.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () async {
-                          final surahName = await _quranService.getSurahName(lastRead['surah_number']);
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.reading,
-                            arguments: {
-                              'type': 'surah',
-                              'number': lastRead['surah_number'],
-                              'name': surahName,
-                              'ayah_number': lastRead['ayah_number'],
-                            },
-                          ).then((_) {
-                            _loadLastRead(); // Refresh last read after navigation
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+              // Terakhir dibaca section - positioned between header and activities
+              Transform.translate(
+                offset: const Offset(0, -42), // Move up to overlap with header
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: GestureDetector(
+                    onTap: _onLastReadTap,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.shadowMedium,
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                          child: Row(
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/ic_quran.png',
+                            width: 24,
+                            height: 24,
+                            // color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Terakhir dibaca',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                    fontFamily: 'OpenDyslexic',
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  lastRead,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimary,
+                                    fontFamily: 'OpenDyslexic',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: AppColors.textSecondary,
+                            size: 24,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: Column(
+                  children: [
+                    // Prayer Times Section
+                    _buildPrayerTimesSection(),
+                    const SizedBox(height: 20),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Text(
+                            'Aktivitas untuk anda',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                              fontFamily: 'OpenDyslexic',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Column(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFD4C785).withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.menu_book,
-                                  color: Color(0xFFD4C785),
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Terakhir dibaca',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                        fontFamily: 'OpenDyslexic',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Q.S. ${lastRead['surah_name']}: ${lastRead['ayah_number']}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                        fontFamily: 'OpenDyslexic',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                color: Colors.grey[400],
-                                size: 16,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD4C785).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.menu_book,
-                                color: Color(0xFFD4C785).withOpacity(0.5),
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              // Baris pertama: Al-Quran dan Tebak Hijaiyah
+                              Row(
                                 children: [
-                                  Text(
-                                    'Terakhir dibaca',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[600],
-                                      fontFamily: 'OpenDyslexic',
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath: 'assets/images/ic_quran.png',
+                                      title: 'Al-Quran',
+                                      backgroundColor: AppColors.primary,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.quran,
+                                        ).then((_) {
+                                          // Refresh data saat kembali dari quran page
+                                          print(
+                                            'Returned from Al-Quran page, refreshing last read data...',
+                                          );
+                                          _loadLastReadData();
+                                        });
+                                      },
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Anda belum mulai membaca',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[500],
-                                      fontFamily: 'OpenDyslexic',
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_text_bacaan.png',
+                                      title: 'Tebak Hijaiyah',
+                                      backgroundColor: AppColors.yellow,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.hijaiyahRecognition,
+                                        );
+                                      },
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Colors.red[400],
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      location,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                        fontFamily: 'OpenDyslexic',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Aktivitas untuk anda',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildActivityCard(
-                        imagePath: 'assets/images/ic_quran.png',
-                        title: 'Al-Quran',
-                        color: const Color(0xFFE74C3C),
-                        onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.quran).then((_) {
-                            _loadLastRead(); // Refresh last read after returning from Quran
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildActivityCard(
-                        imagePath: 'assets/images/Kaaba.png',
-                        title: 'Qibla',
-                        color: Colors.black,
-                        onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.qibla);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildActivityCard(
-                        imagePath: 'assets/images/ic_hijaiyah.png',
-                        title: 'Tracing Hijaiyah',
-                        color: Colors.black,
-                        onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.hijaiyahTracing);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildActivityCard(
-                        imagePath: 'assets/images/ic_sound_wave.png',
-                        title: 'Latihan',
-                        color: const Color(0xFF52C41A),
-                        onTap: () {
-                          Navigator.pushNamed(context, AppRoutes.latihanKata);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Video pelafalan huruf',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black,
-                    fontFamily: 'OpenDyslexic',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildVideoCard(
-                            title: 'Huruf Alif',
-                            onTap: () {
-                              Navigator.pushNamed(context, AppRoutes.hijaiyahRecognition);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildVideoCard(
-                            title: 'Huruf Ba',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Memutar video Huruf Ba')),
-                              );
-                            },
+                              const SizedBox(height: 16),
+                              // Baris kedua: Jejak Hijaiyah dan Latihan Lafal
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_hijaiyah.png',
+                                      title: 'Jejak Hijaiyah',
+                                      backgroundColor: AppColors.yellow,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.hijaiyahTracing,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: _buildActivityCard(
+                                      imagePath:
+                                          'assets/images/ic_sound_wave.png',
+                                      title: 'Latihan Lafal',
+                                      backgroundColor: AppColors.primary,
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          AppRoutes.latihanKata,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              // Baris ketiga: Qibla (full width)
+                              _buildActivityCardLarge(
+                                imagePath: 'assets/images/Kaaba.png',
+                                title: 'Qibla',
+                                backgroundColor: AppColors.primary,
+                                onTap: () {
+                                  Navigator.pushNamed(context, AppRoutes.qibla);
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildVideoCard(
-                            title: 'Huruf Ta',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Memutar video Huruf Ta')),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildVideoCard(
-                            title: 'Huruf Tsa',
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Memutar video Huruf Tsa')),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -624,48 +817,496 @@ class DashboardScreenState extends State<DashboardScreen> {
   Widget _buildActivityCard({
     required String imagePath,
     required String title,
-    required Color color,
+    required Color backgroundColor,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 140,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withOpacity(0.2),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: _buildCardContent(title, imagePath),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardContent(String title, String imagePath) {
+    switch (title) {
+      case 'Al-Quran':
+        // Layout: buku besar di kiri bawah, teks di kanan bawah
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: -20,
+                bottom: -10,
+                child: Image.asset(
+                  imagePath,
+                  width: 120,
+                  // height: 150,
+                  alignment: Alignment.bottomLeft,
+                ),
+              ),
+              // Teks di kanan-bawah
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, bottom: 16.0),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'Al-\nQuran',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'Tebak Hijaiyah':
+        // Layout baru: sesuai mock ke-2 (beige wedge di kiri-atas, sticky note miring di kiri-bawah,
+        // huruf Arab besar, judul dua baris di kanan-tengah)
+        return Stack(
+          children: [
+            // Background gradient lembut
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.yellow, Color(0xFFFFFBD0)],
+                  ),
+                ),
+              ),
+            ),
+            // Wedge/plate beige di kiri-atas (sedikit diputar agar sisi kanan miring)
+            Positioned(
+              left: -6,
+              top: 0,
+              child: Transform.rotate(
+                angle: 0.2,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFE8C9A8), // beige lembut
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: Opacity(
+                      opacity: 0.8,
+                      child: Text(
+                        'ب',
+                        style: ArabicTextStyles.custom(
+                          fontSize: 52,
+                          fontWeight: FontWeight.w700,
+                          opacity: 0.9,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Sticky note kuning pucat di kiri-bawah
+            Positioned(
+              left: -12,
+              bottom: -10,
+              child: Transform.rotate(
+                angle: -0.14,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFFFFCC),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Opacity(
+                      opacity: 0.8,
+                      child: Text(
+                        'ا',
+                        style: ArabicTextStyles.custom(
+                          fontSize: 52,
+                          fontWeight: FontWeight.w700,
+                          opacity: 0.9,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Judul dua baris di kanan, disejajarkan vertikal tengah
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0, bottom: 16.0),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: Text(
+                  'Tebak\nHijaiyah',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontFamily: 'OpenDyslexic',
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case 'Jejak Hijaiyah':
+        // Layout: huruf besar di kiri, kotak kecil di belakang, teks di kiri bawah
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.yellow, Color(0xFFFFFBD0)],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: -6,
+                top: -30,
+                child: Opacity(
+                  opacity: 0.7,
+                  child: Image.asset(
+                    imagePath,
+                    width: 100,
+                    alignment: Alignment.bottomLeft,
+                  ),
+                ),
+              ),
+              // Teks di kanan-bawah
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, bottom: 16.0),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'Jejak\nHijaiyah',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'Latihan Lafal':
+        // Layout: lingkaran oranye di kiri-tengah dengan bar vertikal, teks di kanan tengah
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [AppColors.primary, AppColors.primaryLight],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: -20,
+                top: -12,
+                child: Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFFFFB74D).withOpacity(0.4),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _AudioBar(height: 32),
+                        const SizedBox(width: 10),
+                        const _AudioBar(height: 56),
+                        const SizedBox(width: 10),
+                        _AudioBar(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Teks di kanan-bawah
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, bottom: 16.0),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    'Latihan\nLafal',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      default:
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Image.asset(
-                  imagePath,
-                  fit: BoxFit.contain,
-                ),
-              ),
+              child: Image.asset(imagePath, fit: BoxFit.contain),
             ),
             const SizedBox(height: 12),
             Text(
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                fontFamily: 'OpenDyslexic',
+              ),
+            ),
+          ],
+        );
+    }
+  }
+
+  Widget _buildActivityCardLarge({
+    required String imagePath,
+    required String title,
+    required Color backgroundColor,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: 80,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomLeft,
+            end: Alignment.topRight,
+            colors: [AppColors.primary, AppColors.primaryLight],
+          ),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Stack(
+            children: [
+              // Kaaba icon pinned to the left, not affecting the centered title
+              Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: 80,
+                  height: 80,
+                  child: Center(
+                    child: Image.asset(
+                      imagePath,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+              // Title perfectly centered relative to the whole card
+              Center(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontFamily: 'OpenDyslexic',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrayerTimesSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Waktu Shalat',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryLight.withOpacity(0.8),
+                ],
+              ),
+              color: const Color(0xFFE8DCC6),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child:
+                isLoadingPrayerTimes
+                    ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.primary,
+                        ),
+                      ),
+                    )
+                    : prayerTimes != null
+                    ? SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children:
+                            prayerTimes!.allPrayers
+                                .map(
+                                  (prayer) => _buildPrayerTimeCard(
+                                    prayer.name,
+                                    prayer.time,
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    )
+                    : const Center(
+                      child: Text(
+                        'Gagal memuat jadwal sholat',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.black54,
+                          fontFamily: 'OpenDyslexic',
+                        ),
+                      ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrayerTimeCard(String prayerName, String time) {
+    return SizedBox(
+      width: 95,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          // color: AppColors.tertiary.withOpacity(0.1),
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              AppColors.tertiary.withOpacity(0.1),
+              AppColors.tertiary.withOpacity(0.3),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.tertiary.withOpacity(0.4),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              time,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+                fontFamily: 'OpenDyslexic',
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              prayerName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w500,
                 color: Colors.black,
                 fontFamily: 'OpenDyslexic',
               ),
@@ -676,72 +1317,56 @@ class DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildVideoCard({
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: const Color(0xFF8FBC8F),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+  // Build profile avatar widget
+  Widget _buildProfileAvatar() {
+    if (_currentUser?.profileImageUrl != null &&
+        _currentUser!.profileImageUrl!.isNotEmpty) {
+      // Tampilkan gambar dari network
+      return Image.network(
+        _currentUser!.profileImageUrl!,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 2,
             ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF8FBC8F).withValues(alpha: 0.8),
-                    const Color(0xFF7BA77B).withValues(alpha: 0.9),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(15),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.play_arrow,
-                  color: Color(0xFF8FBC8F),
-                  size: 28,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                  fontFamily: 'OpenDyslexic',
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('[Dashboard] Error loading profile image: $error');
+          return const Icon(Icons.person, color: Colors.white, size: 24);
+        },
+      );
+    } else {
+      // Tampilkan icon default
+      return Container(
+        color: Colors.transparent,
+        child: const Icon(Icons.person, color: Colors.white, size: 24),
+      );
+    }
+  }
+}
+
+// Small decorative bar used in Latihan Lafal card
+class _AudioBar extends StatelessWidget {
+  final double height;
+  const _AudioBar({this.height = 24});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: height,
+      decoration: BoxDecoration(
+        color: Color(0xFFFFB74D),
+        borderRadius: BorderRadius.circular(4),
       ),
     );
   }

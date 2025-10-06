@@ -10,34 +10,42 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  String? _usernameError;
+  String? _emailError;
   String? _passwordError;
+  String? _loginError; // Error untuk invalid credentials
   final AuthService _authService = AuthService();
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     setState(() {
-      _usernameError = null;
+      _emailError = null;
       _passwordError = null;
+      _loginError = null; // Clear login error
       _isLoading = true;
     });
 
-    String usernameOrEmail = _usernameController.text.trim();
+    String email = _emailController.text.trim();
     String password = _passwordController.text;
 
-    if (usernameOrEmail.isEmpty) {
+    if (email.isEmpty) {
       setState(() {
-        _usernameError = 'Nama pengguna atau email tidak boleh kosong';
+        _emailError = 'Email tidak boleh kosong';
+        _isLoading = false;
+      });
+      return;
+    } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      setState(() {
+        _emailError = 'Format email tidak valid';
         _isLoading = false;
       });
       return;
@@ -58,13 +66,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      await _authService.login(usernameOrEmail, password);
+      await _authService.login(email, password);
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } catch (e) {
       setState(() {
-        String message = e.toString().replaceFirst('Exception: ', '');
-        if (message.contains('pengguna') || message.contains('email')) {
-          _usernameError = message;
+        String message = e.toString().replaceAll('Exception: ', '');
+        if (message.contains('Invalid login credentials')) {
+          // Set error khusus untuk invalid credentials
+          _loginError = "Email atau password salah. Silakan coba lagi.";
+        } else if (message.contains('email')) {
+          _emailError = message;
         } else {
           _passwordError = message;
         }
@@ -77,24 +88,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleForgotPassword() async {
-    String usernameOrEmail = _usernameController.text.trim();
+    String email = _emailController.text.trim();
 
-    if (usernameOrEmail.isEmpty) {
+    if (email.isEmpty) {
       setState(() {
-        _usernameError = 'Masukkan email terlebih dahulu';
+        _emailError = 'Masukkan email terlebih dahulu';
       });
       return;
     }
 
     try {
-      if (!usernameOrEmail.contains('@')) {
+      if (!email.contains('@')) {
         setState(() {
-          _usernameError = 'Reset password hanya bisa dengan email';
+          _emailError = 'Format email tidak valid';
         });
         return;
       }
 
-      await _authService.forgotPassword(usernameOrEmail);
+      await _authService.forgotPassword(email);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Email reset password telah dikirim'),
@@ -103,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       setState(() {
-        _usernameError = e.toString().replaceFirst('Exception: ', '');
+        _emailError = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -133,12 +144,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     SizedBox(height: 80),
                     CustomTextField(
-                      controller: _usernameController,
-                      hintText: 'Nama pengguna atau Email',
-                      prefixIcon: Icons.person_outline,
-                      errorText: _usernameError,
-                      onChanged: (value) =>
-                          setState(() => _usernameError = null),
+                      controller: _emailController,
+                      hintText: 'Email',
+                      prefixIcon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      errorText: _emailError,
+                      onChanged:
+                          (value) => setState(() {
+                            _emailError = null;
+                            _loginError =
+                                null; // Clear login error saat mengetik
+                          }),
                     ),
                     SizedBox(height: 20),
                     CustomTextField(
@@ -147,8 +163,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: Icons.lock_outline,
                       obscureText: !_isPasswordVisible,
                       errorText: _passwordError,
-                      onChanged: (value) =>
-                          setState(() => _passwordError = null),
+                      onChanged:
+                          (value) => setState(() {
+                            _passwordError = null;
+                            _loginError =
+                                null; // Clear login error saat mengetik
+                          }),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _isPasswordVisible
@@ -157,12 +177,53 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Color(0xFF666666),
                           size: 20,
                         ),
-                        onPressed: _isLoading
-                            ? null
-                            : () => setState(() =>
-                                _isPasswordVisible = !_isPasswordVisible),
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () => setState(
+                                  () =>
+                                      _isPasswordVisible = !_isPasswordVisible,
+                                ),
                       ),
                     ),
+                    // Error message untuk invalid login credentials
+                    if (_loginError != null) ...[
+                      SizedBox(height: 16),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.red[300]!,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red[700],
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _loginError!,
+                                style: TextStyle(
+                                  color: Colors.red[700],
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     SizedBox(height: 20),
                     Align(
                       alignment: Alignment.centerRight,
@@ -192,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     text: 'Masuk',
                     onPressed: _handleLogin,
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -201,10 +262,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(fontSize: 16),
                       ),
                       GestureDetector(
-                        onTap: _isLoading
-                            ? null
-                            : () => Navigator.pushNamed(
-                                context, AppRoutes.register),
+                        onTap:
+                            _isLoading
+                                ? null
+                                : () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.register,
+                                ),
                         child: Text(
                           'Daftar',
                           style: TextStyle(

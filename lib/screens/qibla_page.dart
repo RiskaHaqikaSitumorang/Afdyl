@@ -1,4 +1,5 @@
 // lib/screens/qibla_page.dart
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:math' as math;
@@ -89,51 +90,44 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5DC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFB8D4B8),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: Colors.black,
-                        size: 20,
-                      ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Qibla',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                        fontFamily: 'OpenDyslexic',
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 40),
-                ],
-              ),
+      appBar: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 80, // Increased height to accommodate the extra spacing
+        leading: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.only(top: 8.0, left: 16.0),
+          decoration: BoxDecoration(
+            color: AppColors.tertiary.withOpacity(0.4),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(
+              Icons.chevron_left,
+              color: AppColors.tertiary,
+              size: 25,
             ),
-            Expanded(
-              child: _buildContent(),
-            ),
-          ],
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
         ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            "Qibla",
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(children: [Expanded(child: _buildContent())]),
       ),
     );
   }
@@ -183,11 +177,7 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 80,
-              color: Colors.red[300],
-            ),
+            Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
             SizedBox(height: 20),
             Text(
               'Tidak dapat menentukan arah Qibla',
@@ -260,12 +250,11 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (!_qiblaService.hasSensorSupport) ...[
-            SizedBox(height: 10),
-          ],
+          if (!_qiblaService.hasSensorSupport) ...[SizedBox(height: 10)],
           SizedBox(
             width: 320, // Diameter diperbesar dari 280 ke 320
-            height: 320, // Sesuaikan tinggi dengan lebar untuk lingkaran sempurna
+            height:
+                320, // Sesuaikan tinggi dengan lebar untuk lingkaran sempurna
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -275,10 +264,7 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
                   decoration: BoxDecoration(
                     color: Color(0xFFF5F5DC),
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 3,
-                    ),
+                    border: Border.all(color: Colors.black, width: 3),
                   ),
                 ),
                 buildDirectionLabels(),
@@ -286,15 +272,15 @@ class _QiblaPageState extends State<QiblaPage> with TickerProviderStateMixin {
                   AnimatedBuilder(
                     animation: _compassController,
                     builder: (context, child) {
-                      final angle = _qiblaService.getQiblaAngle() * (math.pi / 180);
+                      final angle =
+                          _qiblaService.getQiblaAngle() * (math.pi / 180);
                       return Transform.rotate(
                         angle: angle,
                         child: SizedBox(
-                          width: 240, // Sesuaikan ukuran panah agar proporsional
+                          width:
+                              240, // Sesuaikan ukuran panah agar proporsional
                           height: 240, // Sesuaikan tinggi dengan lebar
-                          child: CustomPaint(
-                            painter: QiblaArrowPainter(),
-                          ),
+                          child: CustomPaint(painter: QiblaArrowPainter()),
                         ),
                       );
                     },

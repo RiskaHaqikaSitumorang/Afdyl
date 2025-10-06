@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class TracingCanvas extends StatelessWidget {
@@ -19,7 +20,7 @@ class TracingCanvas extends StatelessWidget {
       height: 300,
       child: Container(
         decoration: BoxDecoration(
-          color: Color(0xFFD4C785),
+          color: AppColors.secondary,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Stack(
@@ -32,6 +33,7 @@ class TracingCanvas extends StatelessWidget {
                     letter,
                     style: TextStyle(
                       fontSize: 200,
+                      fontFamily: 'Maqroo',
                       fontWeight: FontWeight.bold,
                       color: Colors.black54,
                     ),
@@ -61,11 +63,12 @@ class TracingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (allStrokes.isEmpty) return;
-    Paint paint = Paint()
-      ..color = Colors.black
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 6.0
-      ..style = PaintingStyle.stroke;
+    Paint paint =
+        Paint()
+          ..color = Colors.black
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 6.0
+          ..style = PaintingStyle.stroke;
 
     // Render setiap stroke secara terpisah (garis tetap ada)
     for (var stroke in allStrokes) {

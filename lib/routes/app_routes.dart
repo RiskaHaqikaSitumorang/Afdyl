@@ -42,16 +42,18 @@ class AppRoutes {
     wrapped: (context) => QuranWrappedScreen(),
     profile: (context) => ProfilePage(),
     hijaiyahTracing: (context) => tracing.HijaiyahTracingPage(),
-    hijaiyahTracingDetail: (context) => detail.HijaiyahTracingDetailPage(
-      letter: '',
-      pronunciation: '',
-    ),
+    hijaiyahTracingDetail:
+        (context) =>
+            detail.HijaiyahTracingDetailPage(letter: '', pronunciation: ''),
     reading: (context) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ReadingPage(
         type: args?['type'] as String? ?? 'surah',
         number: args?['number'] as int? ?? 1,
         name: args?['name'] as String? ?? 'Default',
+        initialAyah: args?['initialAyah'] as int?,
+        initialWord: args?['initialWord'] as int?,
       );
     },
     latihanKata: (context) => latihan.LatihanKataPage(),

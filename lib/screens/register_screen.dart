@@ -11,19 +11,19 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
-  final _usernameController = TextEditingController();
+  final _fullNameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _emailError;
-  String? _usernameError;
+  String? _fullNameError;
   String? _passwordError;
   final AuthService _authService = AuthService();
 
   @override
   void dispose() {
     _emailController.dispose();
-    _usernameController.dispose();
+    _fullNameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -31,13 +31,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     setState(() {
       _emailError = null;
-      _usernameError = null;
+      _fullNameError = null;
       _passwordError = null;
       _isLoading = true;
     });
 
     String email = _emailController.text.trim();
-    String username = _usernameController.text.trim();
+    String fullName = _fullNameController.text.trim();
     String password = _passwordController.text;
 
     if (email.isEmpty) {
@@ -54,15 +54,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (username.isEmpty) {
+    if (fullName.isEmpty) {
       setState(() {
-        _usernameError = 'Nama pengguna tidak boleh kosong';
+        _fullNameError = 'Nama lengkap tidak boleh kosong';
         _isLoading = false;
       });
       return;
-    } else if (username.length < 3) {
+    } else if (fullName.length < 3) {
       setState(() {
-        _usernameError = 'Nama pengguna minimal 3 karakter';
+        _fullNameError = 'Nama lengkap minimal 3 karakter';
         _isLoading = false;
       });
       return;
@@ -83,9 +83,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      await _authService.register(email, username, password);
+      await _authService.register(email, fullName, password);
       _emailController.clear();
-      _usernameController.clear();
+      _fullNameController.clear();
       _passwordController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -119,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     SizedBox(height: 60),
                     Text(
-                      'Assalamualaikum\nSelamat Datang di\nDysQuran',
+                      'Assalamualaikum\nSelamat Datang di\nAFDYL',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 24,
@@ -139,11 +139,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     SizedBox(height: 20),
                     CustomTextField(
-                      controller: _usernameController,
-                      hintText: 'Nama pengguna',
+                      controller: _fullNameController,
+                      hintText: 'Nama lengkap',
                       prefixIcon: Icons.person_outline,
-                      errorText: _usernameError,
-                      onChanged: (value) => setState(() => _usernameError = null),
+                      errorText: _fullNameError,
+                      onChanged:
+                          (value) => setState(() => _fullNameError = null),
                     ),
                     SizedBox(height: 20),
                     CustomTextField(
@@ -152,16 +153,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       prefixIcon: Icons.lock_outline,
                       obscureText: !_isPasswordVisible,
                       errorText: _passwordError,
-                      onChanged: (value) => setState(() => _passwordError = null),
+                      onChanged:
+                          (value) => setState(() => _passwordError = null),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                          _isPasswordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: Color(0xFF666666),
                           size: 20,
                         ),
-                        onPressed: _isLoading
-                            ? null
-                            : () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () => setState(
+                                  () =>
+                                      _isPasswordVisible = !_isPasswordVisible,
+                                ),
                       ),
                     ),
                     SizedBox(height: 60),
@@ -178,7 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     text: 'Daftar',
                     onPressed: _handleRegister,
                   ),
-                  SizedBox(height: 20),
+                  SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -187,9 +195,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(fontSize: 16),
                       ),
                       GestureDetector(
-                        onTap: _isLoading
-                            ? null
-                            : () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+                        onTap:
+                            _isLoading
+                                ? null
+                                : () => Navigator.pushReplacementNamed(
+                                  context,
+                                  AppRoutes.login,
+                                ),
                         child: Text(
                           'Masuk',
                           style: TextStyle(
