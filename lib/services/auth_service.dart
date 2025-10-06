@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import '../services/storage_service.dart';
 
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final StorageService _storageService = StorageService();
 
   // Get current user
   User? get currentUser => _supabase.auth.currentUser;
@@ -12,21 +15,10 @@ class AuthService {
 
   Future<UserModel?> register(
     String email,
-    String username,
+    String fullName,
     String password,
   ) async {
     try {
-      // Check if username already exists
-      final usernameQuery = await _supabase
-          .from('users')
-          .select('username')
-          .eq('username', username.toLowerCase())
-          .limit(1);
-
-      if (usernameQuery.isNotEmpty) {
-        throw Exception('Nama pengguna sudah terdaftar');
-      }
-
       // Create account with Supabase Auth
       final AuthResponse authResponse = await _supabase.auth.signUp(
         email: email,
@@ -44,7 +36,7 @@ class AuthService {
       final UserModel user = UserModel(
         id: authResponse.user!.id,
         email: email,
-        username: username,
+        fullName: fullName,
       );
 
       // Debug: Print data yang akan diinsert
@@ -94,28 +86,8 @@ class AuthService {
     }
   }
 
-  Future<UserModel?> login(String usernameOrEmail, String password) async {
+  Future<UserModel?> login(String email, String password) async {
     try {
-      String email;
-
-      // If input contains '@' → treat as email
-      if (usernameOrEmail.contains('@')) {
-        email = usernameOrEmail;
-      } else {
-        // If input is username → find email in database
-        final userQuery = await _supabase
-            .from('users')
-            .select('email')
-            .eq('username', usernameOrEmail.toLowerCase())
-            .limit(1);
-
-        if (userQuery.isEmpty) {
-          throw Exception('Email tidak ditemukan');
-        }
-
-        email = userQuery.first['email'];
-      }
-
       // Login with email + password
       final AuthResponse authResponse = await _supabase.auth.signInWithPassword(
         email: email,
@@ -277,13 +249,13 @@ class AuthService {
     }
   }
 
-  // Search users by username or email (admin function)
+  // Search users by full name or email (admin function)
   Future<List<UserModel>> searchUsers(String query, {int limit = 20}) async {
     try {
       final usersQuery = await _supabase
           .from('users')
           .select()
-          .or('username.ilike.%$query%,email.ilike.%$query%')
+          .or('full_name.ilike.%$query%,email.ilike.%$query%')
           .order('created_at', ascending: false)
           .limit(limit);
 
@@ -310,19 +282,92 @@ class AuthService {
     }
   }
 
-  // Check if username is available
-  Future<bool> isUsernameAvailable(String username) async {
+  // Upload profile image
+  Future<String> uploadProfileImage(String userId, File imageFile) async {
     try {
-      final userQuery = await _supabase
-          .from('users')
-          .select('id')
-          .eq('username', username.toLowerCase())
-          .limit(1);
+      print('[AuthService] Uploading profile image for user: $userId');
 
-      return userQuery.isEmpty;
+      // Upload ke storage
+      final imageUrl = await _storageService.uploadProfileImage(
+        userId,
+        imageFile,
+      );
+
+      // Update profile_image_url di database
+      await _supabase
+          .from('users')
+          .update({
+            'profile_image_url': imageUrl,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      print('[AuthService] Profile image updated in database');
+      return imageUrl;
     } catch (e) {
-      print('Error checking username availability: $e');
-      return false;
+      print('[AuthService] Error uploading profile image: $e');
+      throw Exception('Gagal upload foto profil: $e');
+    }
+  }
+
+  // Delete profile image
+  Future<void> deleteProfileImage(String userId, String imageUrl) async {
+    try {
+      print('[AuthService] Deleting profile image for user: $userId');
+
+      // Hapus dari storage
+      await _storageService.deleteProfileImage(imageUrl);
+
+      // Update profile_image_url di database menjadi null
+      await _supabase
+          .from('users')
+          .update({
+            'profile_image_url': null,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', userId);
+
+      print('[AuthService] Profile image deleted from database');
+    } catch (e) {
+      print('[AuthService] Error deleting profile image: $e');
+      throw Exception('Gagal hapus foto profil: $e');
+    }
+  }
+
+  // Update profile with image
+  Future<UserModel?> updateUserProfileWithImage(
+    UserModel user,
+    File? newImageFile,
+  ) async {
+    try {
+      String? newImageUrl = user.profileImageUrl;
+
+      // Jika ada gambar baru, upload dulu
+      if (newImageFile != null) {
+        // Hapus gambar lama jika ada
+        if (user.profileImageUrl != null) {
+          await _storageService.deleteProfileImage(user.profileImageUrl!);
+        }
+
+        // Upload gambar baru
+        newImageUrl = await _storageService.uploadProfileImage(
+          user.id,
+          newImageFile,
+        );
+      }
+
+      // Update user dengan URL gambar baru
+      final updatedUser = user.copyWith(profileImageUrl: newImageUrl);
+
+      // Update ke database
+      await _supabase
+          .from('users')
+          .update(updatedUser.toMap())
+          .eq('id', user.id);
+
+      return updatedUser;
+    } catch (e) {
+      throw Exception('Gagal memperbarui profil: $e');
     }
   }
 }
