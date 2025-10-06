@@ -54,7 +54,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (user != null) {
         setState(() {
           _currentUser = user;
-          _nameController.text = user.username;
+          _nameController.text = user.fullName;
           _emailController.text = user.email;
           _isLoading = false;
         });
@@ -111,16 +111,22 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
 
-      // Update user profile
+      // Update user profile (dengan gambar jika ada)
       final updatedUser = _currentUser!.copyWith(
-        username: _nameController.text.trim(),
+        fullName: _nameController.text.trim(),
         email: _emailController.text.trim(),
       );
 
-      final result = await _authService.updateUserProfile(updatedUser);
+      // Upload gambar baru jika ada
+      final result = await _authService.updateUserProfileWithImage(
+        updatedUser,
+        _imageFile,
+      );
+
       if (result != null) {
         setState(() {
           _currentUser = result;
+          _imageFile = null; // Reset setelah berhasil upload
           _isSaving = false;
         });
 
@@ -128,7 +134,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _oldPasswordController.clear();
         _newPasswordController.clear();
 
-        _showSuccessDialog();
+        _showSuccessMessage();
       } else {
         throw Exception('Gagal memperbarui profil');
       }
@@ -137,7 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
         _isSaving = false;
       });
-      _showErrorDialog(_errorMessage!);
+      _showErrorMessage(_errorMessage!);
     }
   }
 
@@ -161,97 +167,114 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  /// Popup success auto-close
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop(); // tutup popup otomatis
-          }
-        });
-
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  "assets/images/ic_checkmark.png",
-                  width: 100,
-                  height: 100,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Perubahan berhasil disimpan",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'OpenDyslexic',
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+  /// Show success notification
+  void _showSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle,
+              color: Colors.white,
+              size: 20,
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Popup error dialog
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text(
-            "Error",
-            style: TextStyle(
-              fontFamily: 'OpenDyslexic',
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(fontFamily: 'OpenDyslexic'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                "OK",
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Perubahan berhasil disimpan',
                 style: TextStyle(
                   fontFamily: 'OpenDyslexic',
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
                 ),
               ),
             ),
           ],
-        );
-      },
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.all(16),
+      ),
     );
+  }
+
+  /// Show error notification
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'OpenDyslexic',
+                  fontSize: 14,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 3),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  /// Get profile image (prioritas: file baru -> URL dari server -> null)
+  ImageProvider? _getProfileImage() {
+    if (_imageFile != null) {
+      return FileImage(_imageFile!);
+    } else if (_currentUser?.profileImageUrl != null &&
+        _currentUser!.profileImageUrl!.isNotEmpty) {
+      return NetworkImage(_currentUser!.profileImageUrl!);
+    }
+    return null;
   }
 
   /// Pilih foto dari kamera / gallery
   Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
 
-    if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+      if (pickedFile != null) {
+        // Validasi ukuran file
+        final file = File(pickedFile.path);
+        final fileSize = await file.length();
+
+        if (fileSize > 5 * 1024 * 1024) {
+          _showErrorMessage('Ukuran gambar terlalu besar (maksimal 5MB)');
+          return;
+        }
+
+        setState(() {
+          _imageFile = file;
+        });
+      }
+    } catch (e) {
+      _showErrorMessage('Gagal memilih gambar: ${e.toString()}');
     }
   }
 
@@ -377,243 +400,368 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Loading state
-              if (_isLoading)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.tertiary,
-                          ),
+        child:
+            _isLoading
+                ? const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.tertiary,
                         ),
-                        SizedBox(height: 16),
-                        Text(
-                          "Memuat profil...",
-                          style: TextStyle(
-                            fontFamily: 'OpenDyslexic',
-                            fontSize: 16,
-                          ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        "Memuat profil...",
+                        style: TextStyle(
+                          fontFamily: 'OpenDyslexic',
+                          fontSize: 16,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 )
-              // Error state
-              else if (_currentUser == null)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
+                : _currentUser == null
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage ?? "Gagal memuat profil",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'OpenDyslexic',
+                          fontSize: 16,
                           color: Colors.red,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage ?? "Gagal memuat profil",
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadUserProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                        child: const Text(
+                          "Coba Lagi",
+                          style: TextStyle(
                             fontFamily: 'OpenDyslexic',
-                            fontSize: 16,
-                            color: Colors.red,
+                            color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadUserProfile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                          child: const Text(
-                            "Coba Lagi",
-                            style: TextStyle(
-                              fontFamily: 'OpenDyslexic',
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 )
-              // Main content
-              else ...[
-                // Error message display
-                if (_errorMessage != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      border: Border.all(color: Colors.red.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(
-                        color: Colors.red.shade800,
-                        fontFamily: 'OpenDyslexic',
-                        fontSize: 14,
-                      ),
-                    ),
+                : SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
                   ),
-                ],
-
-                // Foto Profil bisa diubah
-                Center(
-                  child: GestureDetector(
-                    onTap: _isEditing ? _showImagePickerOptions : null,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundImage:
-                              _imageFile != null
-                                  ? FileImage(_imageFile!)
-                                  : const AssetImage("/images/ic_avatar.png")
-                                      as ImageProvider,
-                        ),
-                        if (_isEditing)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                              padding: const EdgeInsets.all(6),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                size: 20,
-                                color: Colors.black87,
-                              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Error message display
+                      if (_errorMessage != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade100,
+                            border: Border.all(color: Colors.red.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: Colors.red.shade800,
+                              fontFamily: 'OpenDyslexic',
+                              fontSize: 14,
                             ),
                           ),
+                        ),
                       ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
 
-                _buildSectionField(
-                  label: "Nama pengguna",
-                  controller: _nameController,
-                  enabled: _isEditing,
-                ),
-                const SizedBox(height: 16),
-
-                _buildSectionField(
-                  label: "Email",
-                  controller: _emailController,
-                  enabled: _isEditing,
-                ),
-                const SizedBox(height: 16),
-
-                if (_isEditing) ...[
-                  SizedBox(height: 20),
-                  const Text(
-                    "Ganti password (opsional)",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                      fontFamily: 'OpenDyslexic',
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSectionField(
-                    label: "Password lama",
-                    controller: _oldPasswordController,
-                    hint: "Masukkan password lama",
-                    obscure: true,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSectionField(
-                    label: "Password baru",
-                    controller: _newPasswordController,
-                    hint: "Masukkan password baru (min. 6 karakter)",
-                    obscure: true,
-                  ),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  _buildSectionField(
-                    label: "Password",
-                    controller: TextEditingController(text: "********"),
-                    enabled: false,
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                Expanded(child: SizedBox()),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 60,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _toggleEdit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _isSaving ? Colors.grey : const Color(0xFFE6D679),
-                      padding: EdgeInsets.zero, // Hilangkan padding default
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child:
-                        _isSaving
-                            ? const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 12,
-                                  height: 12,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
+                      // Foto Profil bisa diubah
+                      Center(
+                        child: GestureDetector(
+                          onTap: _isEditing ? _showImagePickerOptions : null,
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: _getProfileImage(),
+                                child:
+                                    _getProfileImage() == null
+                                        ? Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: Colors.grey[400],
+                                        )
+                                        : null,
+                              ),
+                              if (_isEditing)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppColors.tertiary,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    padding: const EdgeInsets.all(8),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      size: 20,
+                                      color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Menyimpan...",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white,
-                                    fontFamily: 'OpenDyslexic',
-                                  ),
-                                ),
-                              ],
-                            )
-                            : Text(
-                              _isEditing ? "Simpan perubahan" : "Edit profile",
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.black87,
-                                fontFamily: 'OpenDyslexic',
-                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      _buildSectionField(
+                        label: "Nama lengkap",
+                        controller: _nameController,
+                        enabled: _isEditing,
+                      ),
+                      const SizedBox(height: 16),
+
+                      _buildSectionField(
+                        label: "Email",
+                        controller: _emailController,
+                        enabled: _isEditing,
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (_isEditing) ...[
+                        SizedBox(height: 20),
+                        const Text(
+                          "Ganti password (opsional)",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                            fontFamily: 'OpenDyslexic',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildSectionField(
+                          label: "Password lama",
+                          controller: _oldPasswordController,
+                          hint: "Masukkan password lama",
+                          obscure: true,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildSectionField(
+                          label: "Password baru",
+                          controller: _newPasswordController,
+                          hint: "Masukkan password baru (min. 6 karakter)",
+                          obscure: true,
+                        ),
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        _buildSectionField(
+                          label: "Password",
+                          controller: TextEditingController(text: "********"),
+                          enabled: false,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Tombol Edit/Simpan
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _toggleEdit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                _isSaving
+                                    ? Colors.grey
+                                    : const Color(0xFFE6D679),
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                          ),
+                          child:
+                              _isSaving
+                                  ? const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.5,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Menyimpan...",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                          fontFamily: 'OpenDyslexic',
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                  : Text(
+                                    _isEditing
+                                        ? "Simpan perubahan"
+                                        : "Edit profile",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                      fontFamily: 'OpenDyslexic',
+                                    ),
+                                  ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tombol Logout
+                      SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: OutlinedButton.icon(
+                          onPressed: _showLogoutConfirmation,
+                          icon: const Icon(Icons.logout, color: Colors.red),
+                          label: const Text(
+                            "Logout",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red,
+                              fontFamily: 'OpenDyslexic',
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red, width: 2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
+  }
+
+  /// Konfirmasi logout
+  void _showLogoutConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            "Konfirmasi Logout",
+            style: TextStyle(
+              fontFamily: 'OpenDyslexic',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            "Apakah Anda yakin ingin keluar dari aplikasi?",
+            style: TextStyle(fontFamily: 'OpenDyslexic'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "Batal",
+                style: TextStyle(
+                  fontFamily: 'OpenDyslexic',
+                  color: Colors.grey,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Tutup dialog
+                await _performLogout();
+              },
+              child: const Text(
+                "Logout",
+                style: TextStyle(
+                  fontFamily: 'OpenDyslexic',
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Proses logout
+  Future<void> _performLogout() async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.tertiary),
+            ),
+          );
+        },
+      );
+
+      await _authService.signOut();
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Navigate to login page and clear all routes
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Show error
+      _showErrorMessage('Gagal logout: ${e.toString()}');
+    }
   }
 }

@@ -10,36 +10,42 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  String? _usernameError;
+  String? _emailError;
   String? _passwordError;
   String? _loginError; // Error untuk invalid credentials
   final AuthService _authService = AuthService();
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _handleLogin() async {
     setState(() {
-      _usernameError = null;
+      _emailError = null;
       _passwordError = null;
       _loginError = null; // Clear login error
       _isLoading = true;
     });
 
-    String usernameOrEmail = _usernameController.text.trim();
+    String email = _emailController.text.trim();
     String password = _passwordController.text;
 
-    if (usernameOrEmail.isEmpty) {
+    if (email.isEmpty) {
       setState(() {
-        _usernameError = 'Email tidak boleh kosong';
+        _emailError = 'Email tidak boleh kosong';
+        _isLoading = false;
+      });
+      return;
+    } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      setState(() {
+        _emailError = 'Format email tidak valid';
         _isLoading = false;
       });
       return;
@@ -60,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      await _authService.login(usernameOrEmail, password);
+      await _authService.login(email, password);
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } catch (e) {
       setState(() {
@@ -68,8 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
         if (message.contains('Invalid login credentials')) {
           // Set error khusus untuk invalid credentials
           _loginError = "Email atau password salah. Silakan coba lagi.";
-        } else if (message.contains('pengguna') || message.contains('email')) {
-          _usernameError = message;
+        } else if (message.contains('email')) {
+          _emailError = message;
         } else {
           _passwordError = message;
         }
@@ -82,24 +88,24 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleForgotPassword() async {
-    String usernameOrEmail = _usernameController.text.trim();
+    String email = _emailController.text.trim();
 
-    if (usernameOrEmail.isEmpty) {
+    if (email.isEmpty) {
       setState(() {
-        _usernameError = 'Masukkan email terlebih dahulu';
+        _emailError = 'Masukkan email terlebih dahulu';
       });
       return;
     }
 
     try {
-      if (!usernameOrEmail.contains('@')) {
+      if (!email.contains('@')) {
         setState(() {
-          _usernameError = 'Reset password hanya bisa dengan email';
+          _emailError = 'Format email tidak valid';
         });
         return;
       }
 
-      await _authService.forgotPassword(usernameOrEmail);
+      await _authService.forgotPassword(email);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Email reset password telah dikirim'),
@@ -108,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       setState(() {
-        _usernameError = e.toString().replaceFirst('Exception: ', '');
+        _emailError = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -138,13 +144,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     SizedBox(height: 80),
                     CustomTextField(
-                      controller: _usernameController,
-                      hintText: 'Email pengguna',
-                      prefixIcon: Icons.person_outline,
-                      errorText: _usernameError,
+                      controller: _emailController,
+                      hintText: 'Email',
+                      prefixIcon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      errorText: _emailError,
                       onChanged:
                           (value) => setState(() {
-                            _usernameError = null;
+                            _emailError = null;
                             _loginError =
                                 null; // Clear login error saat mengetik
                           }),

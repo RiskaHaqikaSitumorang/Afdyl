@@ -185,9 +185,9 @@ class QuranPageState extends State<QuranPage>
                   Container(
                     width: 40,
                     height: 40,
-                    margin: const EdgeInsets.only(top: 8.0),
+                    margin: const EdgeInsets.only(top: 8.0, left: 16.0),
                     decoration: BoxDecoration(
-                      color: AppColors.whiteSoft,
+                      color: AppColors.tertiary.withValues(alpha: 0.4),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -383,7 +383,7 @@ class QuranPageState extends State<QuranPage>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFD4C785)),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.tertiary),
             ),
             const SizedBox(height: 16),
             const Text(

@@ -11,7 +11,9 @@ import '../constants/app_colors.dart';
 import '../constants/arabic_text_styles.dart';
 import '../services/prayer_service.dart';
 import '../services/last_read_service.dart';
+import '../services/auth_service.dart';
 import '../models/prayer_times_model.dart';
+import '../models/user_model.dart';
 import '../main.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -36,6 +38,10 @@ class _DashboardScreenState extends State<DashboardScreen>
   bool isLoadingPrayerTimes = true;
   final PrayerService _prayerService = PrayerService();
 
+  // User profile state
+  UserModel? _currentUser;
+  final AuthService _authService = AuthService();
+
   @override
   void initState() {
     super.initState();
@@ -58,13 +64,34 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _safeAsyncInit() async {
     try {
       print('[Dashboard] 🔄 Starting async initialization...');
-      await Future.wait([_getCurrentLocation(), _loadLastReadData()]);
+      await Future.wait([
+        _getCurrentLocation(),
+        _loadLastReadData(),
+        _loadUserProfile(),
+      ]);
       print('[Dashboard] ✅ Async initialization complete');
     } catch (e, stack) {
       print('[Dashboard] ❌ Error in async init: $e');
       print('[Dashboard] Stack: $stack');
       // Don't set error state, just log it
       // App can continue with default values
+    }
+  }
+
+  // Load user profile untuk mendapatkan profile image
+  Future<void> _loadUserProfile() async {
+    try {
+      print('[Dashboard] 👤 Loading user profile...');
+      final user = await _authService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+        });
+        print('[Dashboard] ✅ User profile loaded');
+      }
+    } catch (e) {
+      print('[Dashboard] ❌ Error loading user profile: $e');
+      // Don't throw error, just log it
     }
   }
 
@@ -103,6 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Called when the top route has been popped off, and this route shows up
     print('Dashboard: didPopNext called - User returned to dashboard');
     _loadLastReadData();
+    _loadUserProfile(); // Refresh profile image saat kembali ke dashboard
   }
 
   void _startTimeUpdate() {
@@ -377,7 +405,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Error boundary - if there's a critical error, show error screen
     if (_hasError) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.whiteSoft,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -474,16 +502,26 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   context.pushSlideLeft(const ProfilePage());
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.all(8),
+                                  width: 46,
+                                  height: 46,
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
+                                  child: ClipOval(child: _buildProfileAvatar()),
                                 ),
                               ),
                               GestureDetector(
@@ -494,12 +532,25 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   );
                                 },
                                 child: Container(
-                                  width: 40,
-                                  height: 40,
+                                  width: 46,
+                                  height: 46,
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.3),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                                   ),
                                   child: Image.asset(
                                     'assets/images/ic_rank.png',
@@ -1264,6 +1315,42 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
       ),
     );
+  }
+
+  // Build profile avatar widget
+  Widget _buildProfileAvatar() {
+    if (_currentUser?.profileImageUrl != null &&
+        _currentUser!.profileImageUrl!.isNotEmpty) {
+      // Tampilkan gambar dari network
+      return Image.network(
+        _currentUser!.profileImageUrl!,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value:
+                  loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 2,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('[Dashboard] Error loading profile image: $error');
+          return const Icon(Icons.person, color: Colors.white, size: 24);
+        },
+      );
+    } else {
+      // Tampilkan icon default
+      return Container(
+        color: Colors.transparent,
+        child: const Icon(Icons.person, color: Colors.white, size: 24),
+      );
+    }
   }
 }
 

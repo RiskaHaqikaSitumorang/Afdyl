@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/latihan_service.dart';
+import '../services/arabic_tts_service.dart';
 import '../widgets/recording_button.dart';
 import '../constants/app_colors.dart';
 
@@ -12,12 +13,14 @@ class LatihanKataPage extends StatefulWidget {
 class LatihanKataPageState extends State<LatihanKataPage>
     with TickerProviderStateMixin {
   final LatihanService _latihanService = LatihanService();
+  final ArabicTTSService _ttsService = ArabicTTSService();
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   String _arabicText = '';
   String _currentStatus = '';
   bool _isListening = false;
   bool _isProcessing = false;
+  bool _isSpeaking = false;
 
   @override
   void initState() {
@@ -42,6 +45,7 @@ class LatihanKataPageState extends State<LatihanKataPage>
   Future<void> _initializeServices() async {
     print('[LatihanKataPage] 🚀 Memulai inisialisasi services...');
     await _latihanService.initialize();
+    await _ttsService.initialize();
     print('[LatihanKataPage] ✅ Services berhasil diinisialisasi');
 
     await _checkMicrophonePermission();
@@ -100,8 +104,29 @@ class LatihanKataPageState extends State<LatihanKataPage>
   void dispose() {
     print('[LatihanKataPage] 🔚 dispose() dipanggil');
     _latihanService.dispose();
+    _ttsService.dispose();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleTTS() async {
+    if (_arabicText.isEmpty) return;
+
+    if (_ttsService.isSpeaking) {
+      await _ttsService.stop();
+      setState(() {
+        _isSpeaking = false;
+      });
+    } else {
+      setState(() {
+        _isSpeaking = true;
+      });
+      await _ttsService.speak(_arabicText);
+      // Will automatically set _isSpeaking to false when completed
+      setState(() {
+        _isSpeaking = false;
+      });
+    }
   }
 
   @override
@@ -291,6 +316,35 @@ class LatihanKataPageState extends State<LatihanKataPage>
                                 fontSize: 24,
                                 color: Colors.black,
                                 fontFamily: 'Maqroo',
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            // TTS Button
+                            ElevatedButton.icon(
+                              onPressed: _toggleTTS,
+                              icon: Icon(
+                                _isSpeaking ? Icons.stop : Icons.volume_up,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                _isSpeaking ? 'Hentikan' : 'Dengarkan',
+                                style: TextStyle(
+                                  fontFamily: 'OpenDyslexic',
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    _isSpeaking
+                                        ? Colors.red
+                                        : AppColors.tertiary,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                               ),
                             ),
                           ],

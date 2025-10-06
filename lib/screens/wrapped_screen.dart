@@ -418,18 +418,18 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
     // Check if Real mode but not yet Dec 31
     if (!_useDummyData && !_isWrappedAvailable()) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Main message
-              Transform.rotate(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: // Main message
+                  Transform.rotate(
                 angle: -0.05, // Slight rotation upward
                 child: const Text(
                   'Wrapped Belum Tersedia',
                   style: TextStyle(
-                    fontSize: 40,
+                    fontSize: 46,
                     fontWeight: FontWeight.bold,
                     color: AppColors.softBlack,
                     fontFamily: 'OpenDyslexic',
@@ -444,75 +444,75 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 30),
-              // Info box
-              Container(
-                padding: const EdgeInsets.all(20),
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.celebration,
-                      size: 40,
-                      color: AppColors.tertiary,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Quran Wrapped hanya tersedia setiap',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black87,
-                        fontFamily: 'OpenDyslexic',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.tertiary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        '31 Desember',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'OpenDyslexic',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Kami akan merangkum semua aktivitas membaca Al-Quran kamu sepanjang tahun! 📖✨',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black54,
-                        fontFamily: 'OpenDyslexic',
-                        height: 1.4,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(height: 30),
+            // Info box
+            Container(
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.celebration,
+                    size: 40,
+                    color: AppColors.tertiary,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Quran Wrapped hanya tersedia setiap',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                      fontFamily: 'OpenDyslexic',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.tertiary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      '31 Desember',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        fontFamily: 'OpenDyslexic',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Kami akan merangkum semua aktivitas membaca Al-Quran kamu sepanjang tahun! 📖✨',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                      fontFamily: 'OpenDyslexic',
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       );
     }
