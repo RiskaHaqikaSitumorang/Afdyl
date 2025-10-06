@@ -10,8 +10,54 @@ class AuthService {
   // Get current user
   User? get currentUser => _supabase.auth.currentUser;
 
+  // Get current session
+  Session? get currentSession => _supabase.auth.currentSession;
+
+  // Check if user is authenticated
+  bool get isAuthenticated => currentUser != null && currentSession != null;
+
   // Auth state stream
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
+
+  // Recover session (called on app start)
+  Future<bool> recoverSession() async {
+    try {
+      print('[AuthService] 🔄 Attempting to recover session...');
+
+      // Supabase automatically recovers session from local storage
+      final session = currentSession;
+
+      if (session != null) {
+        print('[AuthService] ✅ Session recovered: ${currentUser?.email}');
+        print('[AuthService] Session expires at: ${session.expiresAt}');
+
+        // Check if session is still valid
+        final expiresAt = DateTime.fromMillisecondsSinceEpoch(
+          session.expiresAt! * 1000,
+        );
+        final now = DateTime.now();
+
+        if (expiresAt.isAfter(now)) {
+          print('[AuthService] ✅ Session is still valid');
+          return true;
+        } else {
+          print('[AuthService] ⚠️ Session expired, refreshing...');
+          // Try to refresh the session
+          final refreshResponse = await _supabase.auth.refreshSession();
+          if (refreshResponse.session != null) {
+            print('[AuthService] ✅ Session refreshed successfully');
+            return true;
+          }
+        }
+      }
+
+      print('[AuthService] ❌ No valid session found');
+      return false;
+    } catch (e) {
+      print('[AuthService] ❌ Error recovering session: $e');
+      return false;
+    }
+  }
 
   Future<UserModel?> register(
     String email,

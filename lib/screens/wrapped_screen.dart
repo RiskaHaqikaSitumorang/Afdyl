@@ -16,7 +16,8 @@ class QuranWrappedScreen extends StatefulWidget {
   State<QuranWrappedScreen> createState() => _QuranWrappedScreenState();
 }
 
-class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
+class _QuranWrappedScreenState extends State<QuranWrappedScreen>
+    with TickerProviderStateMixin {
   bool _isLoading = true;
   bool _useDummyData = true; // Default to dummy for competition
   List<Map<String, dynamic>> _topSurahs = [];
@@ -24,10 +25,70 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
   int _wrappedYear =
       DateTime.now().year; // Track which year's data we're showing
 
+  // Animation controllers for each surah
+  List<AnimationController> _slideControllers = [];
+  List<Animation<Offset>> _slideAnimations = [];
+  List<Animation<double>> _fadeAnimations = [];
+
   @override
   void initState() {
     super.initState();
     _loadWrappedData();
+  }
+
+  @override
+  void dispose() {
+    // Dispose all animation controllers
+    for (var controller in _slideControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _initializeAnimations() {
+    // Clear previous animations
+    for (var controller in _slideControllers) {
+      controller.dispose();
+    }
+    _slideControllers.clear();
+    _slideAnimations.clear();
+    _fadeAnimations.clear();
+
+    // Create animations for each surah
+    for (int i = 0; i < _topSurahs.length; i++) {
+      final controller = AnimationController(
+        duration: Duration(milliseconds: 600),
+        vsync: this,
+      );
+
+      final slideAnimation = Tween<Offset>(
+        begin: Offset(-1.5, 0.0), // Start from left
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeOutCubic),
+      );
+
+      final fadeAnimation = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeIn));
+
+      _slideControllers.add(controller);
+      _slideAnimations.add(slideAnimation);
+      _fadeAnimations.add(fadeAnimation);
+    }
+
+    // Start animations with staggered delay
+    _startStaggeredAnimations();
+  }
+
+  void _startStaggeredAnimations() async {
+    for (int i = 0; i < _slideControllers.length; i++) {
+      await Future.delayed(Duration(milliseconds: 1000 + i));
+      if (mounted) {
+        _slideControllers[i].forward();
+      }
+    }
   }
 
   /// Check if wrapped is available (only on/after Dec 31)
@@ -72,6 +133,9 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
         _wrappedYear = isAfterYearEnd ? now.year : now.year;
         _isLoading = false;
       });
+
+      // Initialize and start animations after data is loaded
+      _initializeAnimations();
     } catch (e) {
       print('[WrappedScreen] ❌ Error loading wrapped data: $e');
       setState(() => _isLoading = false);
@@ -147,7 +211,7 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Fitur share Wrapped hanya tersedia setiap:',
+                    'Fitur share Journet hanya tersedia setiap:',
                     style: TextStyle(fontFamily: 'OpenDyslexic', fontSize: 14),
                   ),
                   const SizedBox(height: 16),
@@ -248,13 +312,13 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
       // Share using native share sheet
       final message =
           _useDummyData
-              ? 'Lihat Top Surah saya di Afdyl Quran! 📖✨\n\n#QuranWrapped #AfdylQuran'
-              : 'Ini adalah Top Surah saya di tahun $_wrappedYear! 📖✨\n\n#QuranWrapped #AfdylQuran';
+              ? 'Lihat Top Surah saya di Afdyl Quran! 📖✨\n\n#QuranJourney #AfdylQuran'
+              : 'Ini adalah Top Surah saya di tahun $_wrappedYear! 📖✨\n\n#QuranJourney #AfdylQuran';
 
       await Share.shareXFiles(
         [XFile(imagePath)],
         text: message,
-        subject: 'Quran Wrapped $_wrappedYear',
+        subject: 'Quran Journey $_wrappedYear',
       );
     } catch (e) {
       print('[WrappedScreen] ❌ Error sharing: $e');
@@ -427,7 +491,7 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
                   Transform.rotate(
                 angle: -0.05, // Slight rotation upward
                 child: const Text(
-                  'Wrapped Belum Tersedia',
+                  'Journey Belum Tersedia',
                   style: TextStyle(
                     fontSize: 46,
                     fontWeight: FontWeight.bold,
@@ -470,7 +534,7 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Quran Wrapped hanya tersedia setiap',
+                    'Quran Journey hanya tersedia setiap',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.black87,
@@ -540,7 +604,7 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
               Text(
                 _useDummyData
                     ? 'Silakan gunakan mode "Real" untuk melihat data aktual'
-                    : 'Mulai baca Al-Quran untuk melihat Wrapped Anda!',
+                    : 'Mulai baca Al-Quran untuk melihat Journey Anda!',
                 style: const TextStyle(
                   fontSize: 18,
                   color: AppColors.softBlack,
@@ -650,8 +714,12 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
                   ),
                 ),
               const SizedBox(height: 10),
-              // Surah list
-              ..._topSurahs.map((surah) => _buildSimpleSurahItem(surah)),
+              // Surah list with animations
+              ..._topSurahs.asMap().entries.map((entry) {
+                final index = entry.key;
+                final surah = entry.value;
+                return _buildAnimatedSurahItem(surah, index);
+              }),
               const SizedBox(height: 60),
             ],
           ),
@@ -660,38 +728,53 @@ class _QuranWrappedScreenState extends State<QuranWrappedScreen> {
     );
   }
 
-  Widget _buildSimpleSurahItem(Map<String, dynamic> surah) {
+  Widget _buildAnimatedSurahItem(Map<String, dynamic> surah, int index) {
+    // If animations not ready yet, show without animation
+    if (index >= _slideAnimations.length) {
+      return _buildSimpleSurahItem(surah);
+    }
+
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Rank
-            Text(
-              '#${surah['rank']}',
+      child: SlideTransition(
+        position: _slideAnimations[index],
+        child: FadeTransition(
+          opacity: _fadeAnimations[index],
+          child: _buildSimpleSurahItem(surah),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleSurahItem(Map<String, dynamic> surah) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Rank
+          Text(
+            '#${surah['rank']}',
+            style: const TextStyle(
+              fontSize: 38,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              fontFamily: 'OpenDyslexic',
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Surah name
+          Expanded(
+            child: Text(
+              surah['name'] as String,
               style: const TextStyle(
-                fontSize: 38,
-                fontWeight: FontWeight.bold,
+                fontSize: 30,
+                fontWeight: FontWeight.w600,
                 color: Colors.black87,
                 fontFamily: 'OpenDyslexic',
               ),
             ),
-            const SizedBox(width: 24),
-            // Surah name
-            Expanded(
-              child: Text(
-                surah['name'] as String,
-                style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                  fontFamily: 'OpenDyslexic',
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

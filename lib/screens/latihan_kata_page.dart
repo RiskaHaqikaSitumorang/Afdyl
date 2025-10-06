@@ -284,71 +284,55 @@ class LatihanKataPageState extends State<LatihanKataPage>
                     if (_arabicText.isNotEmpty && !_isListening) ...[
                       SizedBox(height: 20),
                       // Hasil audio
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: Offset(0, 5),
+                      Column(
+                        children: [
+                          Text(
+                            'Ayat dari Audio Anda:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.softBlack,
+                              fontFamily: 'OpenDyslexic',
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Ayat dari Audio Anda:',
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            _arabicText,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 40,
+                              color: Colors.black,
+                              fontFamily: 'Maqroo',
+                              height: 2.0,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          // TTS Button
+                          ElevatedButton.icon(
+                            onPressed: _toggleTTS,
+                            icon: Icon(
+                              _isSpeaking ? Icons.stop : Icons.volume_up,
+                              color: Colors.white,
+                            ),
+                            label: Text(
+                              _isSpeaking ? 'Hentikan' : 'Dengarkan',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.softBlack,
                                 fontFamily: 'OpenDyslexic',
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            Text(
-                              _arabicText,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 24,
-                                color: Colors.black,
-                                fontFamily: 'Maqroo',
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            // TTS Button
-                            ElevatedButton.icon(
-                              onPressed: _toggleTTS,
-                              icon: Icon(
-                                _isSpeaking ? Icons.stop : Icons.volume_up,
                                 color: Colors.white,
                               ),
-                              label: Text(
-                                _isSpeaking ? 'Hentikan' : 'Dengarkan',
-                                style: TextStyle(
-                                  fontFamily: 'OpenDyslexic',
-                                  color: Colors.white,
-                                ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  _isSpeaking ? Colors.red : AppColors.tertiary,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    _isSpeaking
-                                        ? Colors.red
-                                        : AppColors.tertiary,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ],

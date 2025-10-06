@@ -87,16 +87,6 @@ class FlashcardWidget extends StatelessWidget {
                             'Huruf ${controller.shuffledLetters[index]['name']!}',
                       ),
                       SizedBox(height: 8),
-                      // Nama huruf dalam kurung
-                      Text(
-                        '(${controller.shuffledLetters[index]['name']!})',
-                        style: TextStyle(
-                          fontSize: isCenter ? 14 : 12,
-                          fontFamily: 'OpenDyslexic',
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
                     ],
                   ),
                 ),
