@@ -1,3 +1,4 @@
+import 'package:afdyl/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/loading_button.dart';
@@ -105,17 +106,133 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
+      // Show loading
+      setState(() => _isLoading = true);
+
       await _authService.forgotPassword(email);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Email reset password telah dikirim'),
-          backgroundColor: Colors.green,
-        ),
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      // Show success dialog with instructions
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Email Terkirim!',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Link reset password telah dikirim ke:',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  email,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Langkah selanjutnya:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '1. Buka email Anda\n'
+                        '2. Cari email dari Supabase\n'
+                        '3. Klik link reset password\n'
+                        '4. Anda akan diarahkan ke app ini\n'
+                        '5. Masukkan password baru Anda',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue.shade800,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Tidak menerima email? Periksa folder spam Anda.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK, Mengerti',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.tertiary,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       );
     } catch (e) {
-      setState(() {
-        _emailError = e.toString().replaceFirst('Exception: ', '');
-      });
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(e.toString().replaceFirst('Exception: ', '')),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 4),
+        ),
+      );
     }
   }
 

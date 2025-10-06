@@ -14,12 +14,14 @@ import '../screens/hijaiyah_tracing_page.dart' as tracing;
 import '../screens/hijaiyah_tracing_detail_page.dart' as detail;
 import '../screens/latihan_kata_page.dart' as latihan;
 import '../screens/hijaiyah_recognition_game.dart';
+import '../screens/reset_password_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
   static const String onboarding = '/onboarding';
   static const String login = '/login';
   static const String register = '/register';
+  static const String resetPassword = '/reset-password';
   static const String dashboard = '/dashboard';
   static const String quran = '/quran';
   static const String reading = '/reading';
@@ -36,6 +38,7 @@ class AppRoutes {
     onboarding: (context) => OnboardingScreen(),
     login: (context) => LoginScreen(),
     register: (context) => RegisterScreen(),
+    resetPassword: (context) => ResetPasswordScreen(),
     dashboard: (context) => DashboardScreen(),
     quran: (context) => QuranPage(),
     qibla: (context) => QiblaPage(),

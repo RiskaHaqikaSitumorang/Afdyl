@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'routes/app_routes.dart';
 import 'constants/app_colors.dart';
+import 'services/deep_link_service.dart';
 import 'dart:async';
 
 void main() async {
@@ -105,12 +106,38 @@ void main() async {
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-class MyApp extends StatelessWidget {
+// Global navigator key untuk deep link navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final _deepLinkService = DeepLinkService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize deep link handler after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _deepLinkService.initialize();
+    });
+  }
+
+  @override
+  void dispose() {
+    _deepLinkService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Add global navigator key
       title: 'AFDYL',
       theme: ThemeData(
         fontFamily: 'OpenDyslexic',

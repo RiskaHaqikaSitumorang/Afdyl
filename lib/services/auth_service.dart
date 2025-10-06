@@ -119,11 +119,34 @@ class AuthService {
 
   Future<void> forgotPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      // Deep link untuk redirect ke app setelah klik magic link
+      const String redirectTo = 'afdylquran://reset-password';
+
+      await _supabase.auth.resetPasswordForEmail(email, redirectTo: redirectTo);
     } on AuthException catch (e) {
       throw Exception(e.message);
     } catch (e) {
       throw Exception('Gagal mengirim email reset: $e');
+    }
+  }
+
+  // Reset password setelah klik magic link dari email
+  Future<void> resetPassword(String newPassword) async {
+    try {
+      final currentUser = _supabase.auth.currentUser;
+
+      if (currentUser == null) {
+        throw Exception(
+          'Sesi tidak valid. Silakan klik ulang link di email Anda.',
+        );
+      }
+
+      // Update password
+      await _supabase.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Gagal reset password: $e');
     }
   }
 
